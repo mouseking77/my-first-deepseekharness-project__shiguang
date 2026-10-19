@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0c0f15">
+<meta name="description" content="会看时间的 DeepSeek 聊天：知道现在几点，合适时才自然关心你一句。">
+<title>时光 · 会看时间的 DeepSeek</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icons/favicon.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:#0c0f15;
+  color:#e8ecf4;
+  font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  display:flex;flex-direction:column;
+  height:100dvh;overflow:hidden;
+  overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+a{color:#7aa8ff}
+
+/* ---------- header ---------- */
+header{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background:rgba(12,15,21,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid #1b2130;
+  z-index:5;
+}
+.icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#aab4c8;font-size:18px}
+.icon-btn:active{background:#1d2433}
+.head-mid{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.conv-title{font-size:15px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.time-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;color:#8b95a8;
+  padding:1px 10px;border-radius:999px;border:1px solid #232b3a;background:#131926;
+}
+.time-chip .dot{width:5px;height:5px;border-radius:50%;background:#4a5468}
+.time-chip.hint-on .dot{background:#3ddc97;box-shadow:0 0 8px rgba(61,220,151,.7)}
+.time-chip #moodText{color:#6f7c93}
+
+/* ---------- messages ---------- */
+main{
+  flex:1 1 auto;overflow-y:auto;overflow-x:hidden;
+  padding:16px 14px 8px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+.msg{display:flex;flex-direction:column;max-width:100%}
+.msg .bubble{
+  padding:11px 14px;border-radius:16px;font-size:15.5px;line-height:1.62;
+  word-break:break-word;overflow-wrap:anywhere;
+}
+.msg.ai .bubble{background:#151b26;border:1px solid #232b3a;border-bottom-left-radius:6px;align-self:flex-start;max-width:92%}
+.msg.me{align-items:flex-end}
+.msg.me .bubble{background:linear-gradient(160deg,#2f6df6,#2557d6);color:#fff;border-bottom-right-radius:6px;max-width:86%}
+.msg .meta{font-size:11px;color:#5f6b80;margin:4px 6px 0}
+.msg.me .meta{text-align:right}
+.msg .err{color:#ffb4b4}
+
+.bubble p{margin:0 0 .6em}
+.bubble p:last-child{margin-bottom:0}
+.bubble h3,.bubble h4,.bubble h5{margin:.8em 0 .4em;font-size:1.02em}
+.bubble ul,.bubble ol{margin:.3em 0 .7em;padding-left:1.3em}
+.bubble li{margin:.15em 0}
+.bubble code{background:#0e1420;border:1px solid #232b3a;border-radius:6px;padding:1px 5px;font-size:.9em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.bubble blockquote{margin:.5em 0;padding-left:10px;border-left:2px solid #2c3547;color:#a9b3c6}
+.bubble hr{border:0;border-top:1px solid #232b3a;margin:.9em 0}
+.msg.me .bubble code{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.2)}
+
+.code{margin:.55em 0;border:1px solid #232b3a;border-radius:12px;overflow:hidden;background:#0b111b}
+.code-lang{font-size:11px;color:#6f7c93;padding:5px 10px;background:#111826;border-bottom:1px solid #1c2432}
+.code pre{margin:0;padding:10px 12px;overflow-x:auto}
+.code code{background:none;border:0;padding:0;font-size:12.5px;line-height:1.55;white-space:pre}
+
+details.think{margin-bottom:6px;font-size:13px;color:#7c879c}
+details.think summary{cursor:pointer;color:#6f7c93;list-style:none;display:flex;align-items:center;gap:5px}
+details.think summary::-webkit-details-marker{display:none}
+details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;background:#101623;border-radius:0 8px 8px 0;white-space:pre-wrap}
+
+.typing{display:inline-flex;gap:4px;padding:2px 0}
+.typing i{width:6px;height:6px;border-radius:50%;background:#5a6780;animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.18s}
+.typing i:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+.empty{max-width:520px;margin:6dvh auto 0;text-align:center;color:#8b95a8}
+.empty .logo{
+  width:66px;height:66px;margin:0 auto 14px;border-radius:20px;
+  display:grid;place-items:center;font-size:30px;
+  background:linear-gradient(160deg,#1b2436,#121722);border:1px solid #26304a;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.empty h2{margin:0 0 8px;font-size:17px;color:#dfe5ef;font-weight:600}
+.empty p{margin:0 0 6px;font-size:13.5px;line-height:1.7}
+.empty .btn{margin-top:16px}
+.empty .slots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;font-size:12px;color:#6f7c93}
+.empty .quick{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.empty .quick button{font-size:13px;padding:8px 14px;border-radius:999px;background:#151b26;border:1px solid #273047;color:#a9b6cc}
+.empty .quick button:active{background:#1c2536}
+
+/* ---------- composer ---------- */
+.composer{
+  flex:0 0 auto;display:flex;align-items:flex-end;gap:8px;
+  padding:8px 12px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(12,15,21,.9);backdrop-filter:blur(14px);
+  border-top:1px solid #1b2130;
+}
+.composer .box{
+  flex:1;display:flex;align-items:flex-end;gap:6px;
+  background:#151b26;border:1px solid #242c3c;border-radius:22px;
+  padding:5px 6px 5px 14px;
+}
+.composer textarea{
+  flex:1;background:none;border:0;outline:none;resize:none;
+  max-height:132px;padding:8px 0;font-size:15.5px;line-height:1.45;
+}
+.composer textarea::placeholder{color:#5f6b80}
+.send-btn{
+  width:36px;height:36px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;font-size:17px;font-weight:700;
+  background:#2a3448;color:#7c879c;transition:background .15s,color .15s;
+}
+.send-btn.on{background:linear-gradient(160deg,#4d8dff,#2f6df6);color:#fff}
+.send-btn.stop{background:#3a2330;color:#ff8080}
+
+/* ---------- sheets ---------- */
+.scrim{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;
+  transition:opacity .2s;z-index:20;
+}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:21;
+  background:#11161f;border-top:1px solid #242c3c;
+  border-radius:20px 20px 0 0;
+  max-height:90dvh;display:flex;flex-direction:column;
+  transform:translateY(102%);transition:transform .26s cubic-bezier(.22,.9,.3,1);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sheet.on{transform:translateY(0)}
+.sheet-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 16px 10px;border-bottom:1px solid #1b2130;flex:0 0 auto;
+}
+.sheet-head h2{margin:0;font-size:16px;font-weight:600}
+.sheet-body{overflow-y:auto;padding:14px 16px 22px;display:flex;flex-direction:column;gap:12px}
+.grab{width:36px;height:4px;border-radius:2px;background:#2a3345;margin:8px auto 0}
+
+.card{background:#141a25;border:1px solid #212a39;border-radius:14px;padding:12px 13px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:600;color:#9aa6bb;letter-spacing:.04em}
+.field{display:block;margin-bottom:10px}
+.field span{display:block;font-size:12.5px;color:#8b95a8;margin-bottom:5px}
+.field input,.field select,.field textarea{
+  width:100%;background:#0e1420;border:1px solid #263048;border-radius:10px;
+  padding:9px 11px;outline:none;font-size:14.5px;
+}
+.field textarea{resize:vertical;line-height:1.5}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#3d6fd6}
+.field:last-child{margin-bottom:0}
+
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;font-size:14.5px}
+.switch-row input{appearance:none;width:44px;height:26px;border-radius:13px;background:#2a3345;position:relative;flex:0 0 auto;transition:background .18s;outline:none;cursor:pointer}
+.switch-row input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#8b95a8;transition:transform .18s,background .18s}
+.switch-row input:checked{background:#2f6df6}
+.switch-row input:checked::after{transform:translateX(18px);background:#fff}
+
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.chipbox{display:flex;align-items:center;gap:8px;background:#0e1420;border:1px solid #263048;border-radius:10px;padding:9px 11px;font-size:14px}
+.chipbox input{appearance:none;width:18px;height:18px;border-radius:5px;border:1.5px solid #3a4763;flex:0 0 auto;position:relative;cursor:pointer}
+.chipbox input:checked{background:#2f6df6;border-color:#2f6df6}
+.chipbox input:checked::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:13px;line-height:15px;text-align:center}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 16px;border-radius:12px;font-size:14.5px;
+  background:#1d2534;border:1px solid #2a3448;color:#c9d3e4;
+}
+.btn:active{background:#232d40}
+.btn.primary{background:linear-gradient(160deg,#3f7cf5,#2b5fd8);border-color:transparent;color:#fff}
+.btn.danger{color:#ff8b8b;border-color:#3a2330}
+.btn.full{width:100%}
+.btn:disabled{opacity:.55}
+
+.hint{font-size:12px;color:#6f7c93;line-height:1.6;margin:8px 0 0}
+.hint.ok{color:#3ddc97}
+.hint.bad{color:#ff8b8b}
+pre.prompt{
+  margin:8px 0 0;padding:10px;border-radius:10px;background:#0b111b;border:1px solid #1f2837;
+  font-size:11.5px;line-height:1.6;white-space:pre-wrap;color:#93a0b6;max-height:260px;overflow:auto;
+}
+details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
+
+/* conversation list */
+.conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:12px}
+.conv-item:active{background:#1a2130}
+.conv-item.active{background:#18202e;border:1px solid #26304a}
+.conv-main{flex:1;min-width:0}
+.conv-name{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-sub{font-size:11.5px;color:#5f6b80;margin-top:2px}
+.conv-del{padding:6px;color:#5f6b80;font-size:14px;border-radius:8px}
+.conv-del:active{background:#2a1a22;color:#ff8b8b}
+
+/* toast */
+#toast{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,12px);
+  background:#232c3d;border:1px solid #33405a;color:#e8ecf4;
+  padding:9px 16px;border-radius:12px;font-size:13.5px;max-width:86vw;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:40;
+  box-shadow:0 12px 32px rgba(0,0,0,.45);
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (min-width:700px){
+  main{padding-top:22px}
+  .msg.ai .bubble{max-width:78%}
+  .sheet{left:50%;transform:translate(-50%,102%);width:600px;border-radius:20px 20px 0 0}
+  .sheet.on{transform:translate(-50%,0)}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="icon-btn" id="btnMenu" aria-label="对话记录">☰</button>
+  <div class="head-mid">
+    <div class="conv-title" id="convTitle">新对话</div>
+    <button class="time-chip" id="timeChip" title="时间感知状态">
+      <span id="clockText">--:--</span><span class="dot"></span><span id="moodText"></span>
+    </button>
+  </div>
+  <button class="icon-btn" id="btnSettings" aria-label="设置">⚙</button>
+</header>
+
+<main id="messages"><div class="wrap" id="msgWrap"></div></main>
+
+<div class="composer">
+  <div class="box">
+    <textarea id="input" rows="1" placeholder="和小深说点什么…" enterkeyhint="send"></textarea>
+    <button class="send-btn" id="btnSend" aria-label="发送">↑</button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- 对话列表 -->
+<div class="sheet" id="drawer">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2>对话</h2>
+    <button class="btn" id="btnNewConv">＋ 新对话</button>
+  </div>
+  <div class="sheet-body" id="convList"></div>
+</div>
+
+<!-- 设置 -->
+<div class="sheet" id="settings">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2>设置</h2>
+    <button class="btn" data-close>完成</button>
+  </div>
+  <div class="sheet-body">
+
+    <section class="card">
+      <h3>接口</h3>
+      <label class="field">
+        <span>DeepSeek API Key</span>
+        <input id="setKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…">
+      </label>
+      <label class="field">
+        <span>模型</span>
+        <input id="setModel" list="modelList" autocomplete="off" spellcheck="false" placeholder="deepseek-flash">
+        <datalist id="modelList">
+          <option value="deepseek-flash">deepseek-flash（快，日常聊天）</option>
+          <option value="deepseek-v4-pro">deepseek-v4-pro（更强，更贵）</option>
+        </datalist>
+      </label>
+      <label class="field">
+        <span>自定义接口地址（可选）</span>
+        <input id="setProxy" type="url" autocomplete="off" spellcheck="false" placeholder="留空 = https://api.deepseek.com">
+      </label>
+      <div class="switch-row">
+        <span>深度思考（更会推理，也更慢）</span>
+        <input type="checkbox" id="setThinking">
+      </div>
+      <button class="btn full" id="btnTest" style="margin-top:10px">测试连接</button>
+      <p class="hint" id="testResult"></p>
+      <p class="hint">Key 只保存在这台手机的浏览器里。想更安全，可以填一个自己的中转地址（见 README）。</p>
+    </section>
+
+    <section class="card">
+      <h3>时间感 · 主动关心</h3>
+      <div class="switch-row">
+        <span>让它偶尔主动关心我</span>
+        <input type="checkbox" id="setRemOn">
+      </div>
+      <label class="field" style="margin-top:6px">
+        <span>关心程度</span>
+        <select id="setTone">
+          <option value="quiet">不打扰（知道时间，但绝不主动提）</option>
+          <option value="gentle">温和（推荐，最多一句）</option>
+          <option value="warm">热情（可以说两句）</option>
+        </select>
+      </label>
+      <div class="grid4">
+        <label class="chipbox"><input type="checkbox" id="setNight"><span>深夜 23:30–05:30</span></label>
+        <label class="chipbox"><input type="checkbox" id="setMorning"><span>清晨 06:00–09:30</span></label>
+        <label class="chipbox"><input type="checkbox" id="setNoon"><span>午间 11:30–13:00</span></label>
+        <label class="chipbox"><input type="checkbox" id="setEvening"><span>晚间 18:00–20:00</span></label>
+      </div>
+      <p class="hint">同一时段每天最多提醒一次，两条提醒之间至少隔 45 分钟；它不会硬提时间，也不会打断你正在说的事。</p>
+    </section>
+
+    <section class="card">
+      <h3>人设补充</h3>
+      <label class="field">
+        <span>告诉它怎么称呼你、说话偏好</span>
+        <textarea id="setPersona" rows="3" placeholder="例如：叫我小林；说话简短点；别用感叹号"></textarea>
+      </label>
+    </section>
+
+    <section class="card">
+      <h3>核对一下</h3>
+      <details id="promptBox">
+        <summary>查看本轮会发给模型的系统提示词</summary>
+        <pre class="prompt" id="promptPreview"></pre>
+      </details>
+      <p class="hint">时间感知就是靠这段提示词实现的：它把当前时间、时段、距上次聊天多久一起告诉模型。</p>
+    </section>
+
+    <section class="card">
+      <h3>其它</h3>
+      <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
+      <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
+      <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
+      <p class="hint" id="swState"></p>
+    </section>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================ 常量 ============================ */
+  var STORE_KEY = 'shiguang.store.v1';
+  var WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+  var COOLDOWN_MS = 45 * 60 * 1000;
+  var DEFAULT_SETTINGS = {
+    apiKey: '',
+    model: 'deepseek-flash',
+    proxyUrl: '',
+    thinking: false,
+    persona: '',
+    reminders: { enabled: true, tone: 'gentle', night: true, morning: true, noon: true, evening: true }
+  };
+
+  /* ============================ 小工具 ============================ */
+  function q(id) { return document.getElementById(id); }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+  /* ============================ 存储 ============================ */
+  var store = loadStore();
+
+  function loadStore() {
+    var s = null;
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) s = JSON.parse(raw);
+    } catch (e) { s = null; }
+
+    if (!s || typeof s !== 'object') {
+      s = { convs: [], activeId: null, settings: {}, hints: {}, lastHintTs: 0, lastSeen: 0 };
+    }
+    s.convs = Array.isArray(s.convs) ? s.convs : [];
+    s.hints = s.hints && typeof s.hints === 'object' ? s.hints : {};
+    s.settings = s.settings && typeof s.settings === 'object' ? s.settings : {};
+    s.settings = mergeSettings(s.settings);
+    s.lastHintTs = Number(s.lastHintTs) || 0;
+    s.lastSeen = Number(s.lastSeen) || 0;
+    s.convs.forEach(function (c) {
+      c.messages = Array.isArray(c.messages) ? c.messages : [];
+      c.messages.forEach(function (m) { if (!m.id) m.id = uid(); m.pending = false; });
+    });
+    return s;
+  }
+
+  function mergeSettings(got) {
+    var out = {};
+    Object.keys(DEFAULT_SETTINGS).forEach(function (k) {
+      out[k] = got[k] !== undefined && got[k] !== null ? got[k] : DEFAULT_SETTINGS[k];
+    });
+    out.reminders = {};
+    Object.keys(DEFAULT_SETTINGS.reminders).forEach(function (k) {
+      out.reminders[k] = got.reminders && got.reminders[k] !== undefined ? got.reminders[k] : DEFAULT_SETTINGS.reminders[k];
+    });
+    out.apiKey = typeof out.apiKey === 'string' ? out.apiKey : '';
+    out.persona = typeof out.persona === 'string' ? out.persona : '';
+    out.proxyUrl = typeof out.proxyUrl === 'string' ? out.proxyUrl : '';
+    return out;
+  }
+
+  var saveTimer = 0;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 180);
+  }
+  function saveNow() {
+    clearTimeout(saveTimer);
+    saveTimer = 0;
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        convs: store.convs,
+        activeId: store.activeId,
+        settings: store.settings,
+        hints: store.hints,
+        lastHintTs: store.lastHintTs,
+        lastSeen: store.lastSeen
+      }));
+    } catch (e) {
+      toast('本地存储写不进去了（可能满了）');
+    }
+  }
+
+  function getActiveConv() {
+    var c = null;
+    for (var i = 0; i < store.convs.length; i++) {
+      if (store.convs[i].id === store.activeId) { c = store.convs[i]; break; }
+    }
+    if (!c) {
+      c = newConv(false);
+      store.activeId = c.id;
+    }
+    return c;
+  }
+
+  function newConv(activate) {
+    var c = { id: uid(), title: '新对话', createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
+    store.convs.unshift(c);
+    if (activate !== false) store.activeId = c.id;
+    save();
+    return c;
+  }
+
+  /* ============================ 时间 ============================ */
+  var SLOTS = [
+    { id: 'night',   key: 'night',   label: '深夜', shiftPrev: true,
+      test: function (m) { return m >= 1410 || m < 330; },
+      action: '用一句简短的话提醒对方别熬太晚、早点休息' },
+    { id: 'morning', key: 'morning', label: '清晨', shiftPrev: false,
+      test: function (m) { return m >= 360 && m < 570; },
+      action: '道个早上好，顺口关心一下有没有吃早饭' },
+    { id: 'noon',    key: 'noon',    label: '午间', shiftPrev: false,
+      test: function (m) { return m >= 690 && m < 780; },
+      action: '问一句午饭吃了没、要不要歇一会儿' },
+    { id: 'evening', key: 'evening', label: '晚间', shiftPrev: false,
+      test: function (m) { return m >= 1080 && m < 1200; },
+      action: '关心一下晚饭，或者问问今天累不累' }
+  ];
+
+  function periodOf(h) {
+    if (h < 5) return '凌晨';
+    if (h < 7) return '清晨';
+    if (h < 12) return '上午';
+    if (h < 14) return '中午';
+    if (h < 18) return '下午';
+    if (h < 19) return '傍晚';
+    if (h < 23) return '晚上';
+    return '深夜';
+  }
+
+  function dateKeyOf(d) {
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function nowContext() {
+    var d = new Date();
+    var h = d.getHours(), mi = d.getMinutes();
+    return {
+      ts: d.getTime(),
+      hour: h,
+      minutes: h * 60 + mi,
+      clock: pad2(h) + ':' + pad2(mi),
+      weekday: '星期' + WEEK[d.getDay()],
+      period: periodOf(h),
+      dayKey: dateKeyOf(d),
+      full: d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad2(h) + ':' + pad2(mi)
+    };
+  }
+
+  function activeSlot(minutes) {
+    for (var i = 0; i < SLOTS.length; i++) if (SLOTS[i].test(minutes)) return SLOTS[i];
+    return null;
+  }
+
+  function slotDayKey(slot, ts) {
+    var d = new Date(ts);
+    if (slot.shiftPrev && (d.getHours() * 60 + d.getMinutes()) < 330) d.setDate(d.getDate() - 1);
+    return dateKeyOf(d);
+  }
+
+  function hintAllowed(slot, nowTs) {
+    var r = store.settings.reminders;
+    if (!slot) return false;
+    if (!r.enabled || r.tone === 'quiet') return false;
+    if (!r[slot.key]) return false;
+    var last = store.hints[slot.id];
+    if (last && slotDayKey(slot, last) === slotDayKey(slot, nowTs)) return false;
+    if (store.lastHintTs && nowTs - store.lastHintTs < COOLDOWN_MS) return false;
+    return true;
+  }
+
+  function gapText(prevTs, nowTs) {
+    if (!prevTs) return '这是你们的第一次聊天。';
+    var mins = Math.floor((nowTs - prevTs) / 60000);
+    if (mins < 2) return '刚刚';
+    if (mins < 60) return mins + ' 分钟前';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + ' 小时前';
+    return Math.floor(hrs / 24) + ' 天前';
+  }
+
+  /* ============================ 提示词 ============================ */
+  function directiveFor(slot, tone) {
+    var soft = tone === 'warm'
+      ? '如果对话氛围合适，可以用一两句自然、热一点的话'
+      : '如果对话氛围合适，可以在回复末尾用一句简短自然的话';
+    return soft + slot.action + '；如果对方正在忙、在讲正事、情绪低落，或者明确表示不用管，就自然跳过，不要提时间。';
+  }
+
+  function buildSystemPrompt(ctx, slot, settings, gap) {
+    var tone = settings.reminders.tone;
+    var hint = (slot && settings.reminders.enabled && tone !== 'quiet')
+      ? '【本轮建议】现在是' + ctx.period + '（' + ctx.clock + '）。' + directiveFor(slot, tone)
+      : '【本轮建议】本轮不需要主动提时间，正常对话就好。';
+
+    var persona = (settings.persona || '').trim();
+    var lines = [
+      '你是「小深」，一个由 DeepSeek 驱动的中文聊天助手。说话自然、真诚、口语化，不客套、不打官腔。',
+      '',
+      '【当前时间】' + ctx.full + '，' + ctx.weekday + '，' + ctx.period + '。',
+      '【距上次聊天】' + gap,
+      '',
+      '【关于时间，请遵守】',
+      '1. 你确实知道现在的准确时间。用户问到「现在几点 / 今天几号 / 星期几」时，直接准确回答。',
+      '2. 但不要为了显得你知道时间而硬提时间。绝大多数回复里根本不出现时间。',
+      '3. 只在合适的时候自然地「带一下」时间感，比如深夜提醒休息、清晨道早、饭点问一句吃没吃、久聊后提醒活动一下。一条回复最多一处，一句话说完，不要接二连三。',
+      '4. 不要生硬报时，不要说「根据当前时间」「我注意到现在是」这类元信息。也不要在同一段对话里反复用同一种关心句式。',
+      '5. 用户正在讲重要、紧急或情绪低落的事时，先认真回应内容；关心可以省略，或只放在最后半句。',
+      '6. 时间、日期、星期一律以上面的【当前时间】为准，不要自己推算，也不要编造。',
+      '',
+      hint
+    ];
+    if (persona) lines.push('', '【关于用户】' + persona);
+    lines.push('', '回复尽量简洁，除非用户要求展开。');
+    return lines.join('\n');
+  }
+
+  /* ============================ 接口 ============================ */
+  function apiUrl() {
+    var base = (store.settings.proxyUrl || '').trim() || 'https://api.deepseek.com';
+    var clean = base.replace(/\/+$/, '');
+    return /\/chat\/completions$/.test(clean) ? clean : clean + '/chat/completions';
+  }
+
+  function apiError(code, extra) {
+    var e = new Error(code);
+    e.code = code;
+    e.extra = extra || {};
+    return e;
+  }
+
+  function explainError(err) {
+    if (!err) return '未知错误';
+    if (err.name === 'AbortError') return '已停止。';
+    if (err.name === 'TimeoutError') return '请求超时了，检查一下网络。';
+    if (err.code === 'no_key') return '还没填 API Key：点右上角 ⚙ 打开设置 → 接口 → 粘贴 sk- 开头的那串。';
+    if (err.code === 'network') {
+      return '连不上接口。可能是网络问题，也可能是浏览器跨域（CORS）被拦。如果电脑浏览器能用但手机不行，请到设置里填一个中转地址（README 里有免费方案）。';
+    }
+    if (err.code === 'http') {
+      var st = err.extra.status;
+      var d = err.extra.detail ? '（' + err.extra.detail + '）' : '';
+      if (st === 401) return '401 API Key 无效：检查是否复制完整、有没有多余空格。' + d;
+      if (st === 402) return '402 余额不足：去 platform.deepseek.com 充值。' + d;
+      if (st === 429) return '429 请求太频繁或额度受限，等一会儿再试。' + d;
+      if (st === 400) return '400 请求被拒。' + d;
+      if (st >= 500) return st + ' 服务端忙，稍后再试。' + d;
+      return 'HTTP ' + st + ' ' + d;
+    }
+    return err.message || '出错了';
+  }
+
+  function callAPI(messages, opts) {
+    opts = opts || {};
+    var s = store.settings;
+    var key = (s.apiKey || '').trim();
+    if (!key) return Promise.reject(apiError('no_key'));
+
+    var body = { model: s.model || 'deepseek-flash', messages: messages, stream: !!opts.stream };
+    if (s.thinking) {
+      body.thinking = { type: 'enabled' };
+      body.reasoning_effort = 'high';
+    }
+
+    var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key };
+
+    return fetch(apiUrl(), {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body),
+      signal: opts.signal
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') throw err;
+      throw apiError('network', { cause: err });
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          var detail = t;
+          try {
+            var j = JSON.parse(t);
+            detail = (j && j.error && (j.error.message || j.error.type)) || t;
+          } catch (e) { /* 纯文本 */ }
+          throw apiError('http', { status: res.status, detail: String(detail).slice(0, 300) });
+        });
+      }
+      if (!opts.stream) {
+        return res.json().then(function (j) {
+          var msg = (j.choices && j.choices[0] && j.choices[0].message) || {};
+          return { content: msg.content || '', reasoning: msg.reasoning_content || '' };
+        });
+      }
+      return readStream(res, opts.onDelta);
+    });
+  }
+
+  function readStream(res, onDelta) {
+    if (!res.body) return Promise.reject(apiError('http', { status: 200, detail: '响应里没有流式主体' }));
+    var reader = res.body.getReader();
+    var dec = new TextDecoder('utf-8');
+    var buf = '', content = '', reasoning = '';
+
+    function handleLine(line) {
+      if (!line || line.charAt(0) === ':') return;
+      if (line.indexOf('data:') !== 0) return;
+      var data = line.slice(5).trim();
+      if (!data || data === '[DONE]') return;
+      var j;
+      try { j = JSON.parse(data); } catch (e) { return; }
+      if (j.error) throw apiError('http', { status: 200, detail: j.error.message || 'stream error' });
+      var d = (j.choices && j.choices[0] && j.choices[0].delta) || {};
+      if (d.reasoning_content) {
+        reasoning += d.reasoning_content;
+        if (onDelta) onDelta('reasoning', d.reasoning_content);
+      }
+      if (d.content) {
+        content += d.content;
+        if (onDelta) onDelta('content', d.content);
+      }
+    }
+
+    function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) {
+          if (buf) handleLine(buf.replace(/\r$/, ''));
+          return { content: content, reasoning: reasoning };
+        }
+        buf += dec.decode(r.value, { stream: true });
+        var idx;
+        while ((idx = buf.indexOf('\n')) >= 0) {
+          var line = buf.slice(0, idx).replace(/\r$/, '');
+          buf = buf.slice(idx + 1);
+          handleLine(line);
+        }
+        return pump();
+      });
+    }
+    return pump();
+  }
+
+  /* ============================ Markdown ============================ */
+  function inlineMd(s) {
+    s = esc(s);
+    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>');
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return s;
+  }
+
+  function codeBlock(code, lang) {
+    return '<div class="code"><div class="code-lang">' + esc(lang || 'text') + '</div><pre><code>' + esc(code) + '</code></pre></div>';
+  }
+
+  function renderMarkdown(src) {
+    var lines = String(src || '').split('\n');
+    var html = '', inCode = false, codeLang = '', codeBuf = [];
+    var listBuf = [], listType = null;
+
+    function flushList() {
+      if (!listBuf.length) return;
+      html += '<' + listType + '>' + listBuf.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</' + listType + '>';
+      listBuf = [];
+      listType = null;
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var fence = line.match(/^```([\w+-]*)\s*$/);
+      if (fence) {
+        if (inCode) {
+          html += codeBlock(codeBuf.join('\n'), codeLang);
+          codeBuf = []; codeLang = ''; inCode = false;
+        } else {
+          flushList(); inCode = true; codeLang = fence[1] || '';
+        }
+        continue;
+      }
+      if (inCode) { codeBuf.push(line); continue; }
+      if (/^\s*$/.test(line)) { flushList(); continue; }
+
+      var ul = line.match(/^\s*[-*+]\s+(.*)$/);
+      var ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+      if (ul) { if (listType !== 'ul') { flushList(); listType = 'ul'; } listBuf.push(inlineMd(ul[1])); continue; }
+      if (ol) { if (listType !== 'ol') { flushList(); listType = 'ol'; } listBuf.push(inlineMd(ol[1])); continue; }
+
+      flushList();
+
+      var h = line.match(/^(#{1,4})\s+(.*)$/);
+      if (h) {
+        var lvl = Math.min(6, h[1].length + 2);
+        html += '<h' + lvl + '>' + inlineMd(h[2]) + '</h' + lvl + '>';
+        continue;
+      }
+      if (/^\s*>\s?/.test(line)) { html += '<blockquote>' + inlineMd(line.replace(/^\s*>\s?/, '')) + '</blockquote>'; continue; }
+      if (/^\s*([-*_])\1{2,}\s*$/.test(line)) { html += '<hr>'; continue; }
+      html += '<p>' + inlineMd(line) + '</p>';
+    }
+    if (inCode) html += codeBlock(codeBuf.join('\n'), codeLang);
+    flushList();
+    return html;
+  }
+
+  /* ============================ 视图 ============================ */
+  var ui = {};
+  var busy = false;
+  var controller = null;
+  var streamMsg = null;
+  var rafId = 0;
+  var installPrompt = null;
+
+  function cacheUi() {
+    ['btnMenu', 'btnSettings', 'btnSend', 'input', 'msgWrap', 'convTitle', 'clockText',
+     'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
+     'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
+     'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona',
+     'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState'
+    ].forEach(function (id) { ui[id] = q(id); });
+  }
+
+  function renderClock() {
+    var c = nowContext();
+    ui.clockText.textContent = c.clock;
+    ui.moodText.textContent = c.period;
+    ui.timeChip.classList.toggle('hint-on',
+      !!store.settings.reminders.enabled && store.settings.reminders.tone !== 'quiet');
+  }
+
+  function renderHeader() {
+    var c = getActiveConv();
+    ui.convTitle.textContent = c.title || '新对话';
+  }
+
+  function messageHtml(m) {
+    if (m.role === 'assistant') {
+      if (m.error) return '<div class="err">' + esc(m.content) + '</div>';
+      if (m.pending && !m.content && !m.reasoning) {
+        return '<div class="typing"><i></i><i></i><i></i></div>';
+      }
+      var out = '';
+      if (m.reasoning) {
+        out += '<details class="think"><summary>💭 思考过程</summary><div>' + esc(m.reasoning) + '</div></details>';
+      }
+      out += renderMarkdown(m.content || '');
+      return out;
+    }
+    return esc(m.content).replace(/\n/g, '<br>');
+  }
+
+  function buildMessageEl(m) {
+    var row = document.createElement('div');
+    row.className = 'msg ' + (m.role === 'user' ? 'me' : 'ai');
+    row.setAttribute('data-mid', m.id);
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = messageHtml(m);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = fmtMsgTime(m.ts);
+
+    row.appendChild(bubble);
+    row.appendChild(meta);
+    return row;
+  }
+
+  function fmtMsgTime(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    var now = new Date();
+    var sameDay = d.toDateString() === now.toDateString();
+    var y = new Date(now.getTime() - 86400000);
+    var yDay = d.toDateString() === y.toDateString();
+    var head = sameDay ? '' : (yDay ? '昨天 ' : (d.getMonth() + 1) + '月' + d.getDate() + '日 ');
+    return head + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function emptyState() {
+    var ctx = nowContext();
+    var wrap = document.createElement('div');
+    wrap.className = 'empty';
+    wrap.innerHTML =
+      '<div class="logo">🕰️</div>' +
+      '<h2>它会看时间</h2>' +
+      '<p>现在是 <b>' + esc(ctx.clock) + '</b>（' + esc(ctx.period) + '）。小深知道当前时间、星期和你们多久没聊了。</p>' +
+      '<p>但它不会每句话都硬扯时间——只在深夜、清晨、饭点这种合适的时候，自然地关心你一句。</p>' +
+      '<div class="quick">' +
+      '<button data-q="现在几点了？">现在几点</button>' +
+      '<button data-q="今天几号、星期几？">今天几号</button>' +
+      '<button data-q="你平时会注意时间吗？">时间感测试</button>' +
+      '</div>' +
+      '<div class="slots"><span>深夜 23:30–05:30</span><span>·</span><span>清晨 06:00–09:30</span><span>·</span><span>午间</span><span>·</span><span>晚间</span></div>' +
+      (store.settings.apiKey ? '' : '<button class="btn primary" id="emptySetup">先填 API Key</button>');
+
+    if (!store.settings.apiKey) {
+      wrap.querySelector('#emptySetup').addEventListener('click', openSettings);
+    }
+    wrap.querySelectorAll('[data-q]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        ui.input.value = b.getAttribute('data-q');
+        autoGrow();
+        updateSendBtn();
+        send();
+      });
+    });
+    return wrap;
+  }
+
+  function renderMessages(forceBottom) {
+    var wrap = ui.msgWrap;
+    var host = ui.msgWrap.parentElement;
+    var nearBottom = host.scrollHeight - host.scrollTop - host.clientHeight < 140;
+
+    wrap.innerHTML = '';
+    var c = getActiveConv();
+    if (!c.messages.length) {
+      wrap.appendChild(emptyState());
+      return;
+    }
+    c.messages.forEach(function (m) { wrap.appendChild(buildMessageEl(m)); });
+    if (forceBottom || nearBottom) scrollToBottom(true);
+  }
+
+  function scrollToBottom(force) {
+    var host = ui.msgWrap.parentElement;
+    if (force) host.scrollTop = host.scrollHeight;
+  }
+
+  function paintStream() {
+    if (!streamMsg) return;
+    var row = ui.msgWrap.querySelector('[data-mid="' + streamMsg.id + '"]');
+    if (!row) return;
+    var bubble = row.querySelector('.bubble');
+    if (bubble) bubble.innerHTML = messageHtml(streamMsg);
+    var host = ui.msgWrap.parentElement;
+    var nearBottom = host.scrollHeight - host.scrollTop - host.clientHeight < 200;
+    if (nearBottom) host.scrollTop = host.scrollHeight;
+  }
+
+  function schedulePaint() {
+    if (rafId) return;
+    rafId = requestAnimationFrame(function () { rafId = 0; paintStream(); });
+  }
+
+  function updateSendBtn() {
+    var hasText = ui.input.value.trim().length > 0;
+    ui.btnSend.classList.toggle('on', hasText || busy);
+    ui.btnSend.classList.toggle('stop', busy);
+    ui.btnSend.textContent = busy ? '■' : '↑';
+    ui.btnSend.setAttribute('aria-label', busy ? '停止' : '发送');
+  }
+
+  function autoGrow() {
+    ui.input.style.height = 'auto';
+    ui.input.style.height = Math.min(132, ui.input.scrollHeight) + 'px';
+  }
+
+  /* ============================ 发送 ============================ */
+  function send() {
+    var text = ui.input.value.trim();
+    if (!text || busy) return;
+    ui.input.value = '';
+    autoGrow();
+    updateSendBtn();
+
+    var conv = getActiveConv();
+    var ctx = nowContext();
+    var prevTs = store.lastSeen;
+    var gap = gapText(prevTs, ctx.ts);
+    var slot = activeSlot(ctx.minutes);
+    var allowed = hintAllowed(slot, ctx.ts);
+    var system = buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gap);
+
+    var history = conv.messages
+      .filter(function (m) { return !m.error && m.content; })
+      .slice(-40)
+      .map(function (m) { return { role: m.role, content: m.content }; });
+
+    var userMsg = { id: uid(), role: 'user', content: text, ts: ctx.ts };
+    conv.messages.push(userMsg);
+    if (conv.title === '新对话') conv.title = text.slice(0, 18) + (text.length > 18 ? '…' : '');
+    conv.updatedAt = ctx.ts;
+    store.lastSeen = ctx.ts;
+
+    var aiMsg = { id: uid(), role: 'assistant', content: '', reasoning: '', ts: ctx.ts, pending: true };
+    conv.messages.push(aiMsg);
+
+    save();
+    renderHeader();
+    renderMessages(true);
+
+    busy = true;
+    controller = new AbortController();
+    streamMsg = aiMsg;
+    updateSendBtn();
+
+    var payload = [{ role: 'system', content: system }].concat(history).concat([{ role: 'user', content: text }]);
+    var timedOut = false;
+    var timer = setTimeout(function () {
+      timedOut = true;
+      if (controller) controller.abort();
+    }, 120000);
+
+    callAPI(payload, {
+      stream: true,
+      signal: controller.signal,
+      onDelta: function (kind, txt) {
+        if (!streamMsg) return;
+        if (kind === 'content') aiMsg.content += txt;
+        else aiMsg.reasoning += txt;
+        schedulePaint();
+      }
+    }).then(function (res) {
+      if (res && res.content) aiMsg.content = res.content;
+      if (!aiMsg.content) aiMsg.content = '（这次没有返回内容，再试一次？）';
+      if (allowed && slot) {
+        store.hints[slot.id] = ctx.ts;
+        store.lastHintTs = ctx.ts;
+      }
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') {
+        if (timedOut) {
+          aiMsg.error = true;
+          aiMsg.content = aiMsg.content || '请求超过 120 秒没响应，已中断。检查网络，或者换个模型再试。';
+        } else {
+          aiMsg.content = (aiMsg.content || '') + '\n\n（已停止）';
+        }
+      } else {
+        aiMsg.error = true;
+        aiMsg.content = explainError(err);
+      }
+    }).then(function () {
+      clearTimeout(timer);
+      aiMsg.pending = false;
+      streamMsg = null;
+      busy = false;
+      controller = null;
+      conv.updatedAt = Date.now();
+      saveNow();
+      renderMessages(false);
+      updateSendBtn();
+    });
+  }
+
+  function stop() {
+    if (controller) controller.abort();
+  }
+
+  /* ============================ 面板 ============================ */
+  function openSheet(id) {
+    q(id).classList.add('on');
+    ui.scrim.classList.add('on');
+  }
+  function closeSheets() {
+    ['drawer', 'settings'].forEach(function (id) { q(id).classList.remove('on'); });
+    ui.scrim.classList.remove('on');
+  }
+
+  function renderConvList() {
+    var list = ui.convList;
+    list.innerHTML = '';
+    if (!store.convs.length) {
+      list.innerHTML = '<p class="hint" style="text-align:center;padding:20px 0">还没有对话</p>';
+      return;
+    }
+    store.convs.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); })
+      .forEach(function (c) {
+        var item = document.createElement('div');
+        item.className = 'conv-item' + (c.id === store.activeId ? ' active' : '');
+        item.innerHTML =
+          '<div class="conv-main"><div class="conv-name">' + esc(c.title || '新对话') + '</div>' +
+          '<div class="conv-sub">' + c.messages.length + ' 条 · ' + fmtMsgTime(c.updatedAt || c.createdAt) + '</div></div>' +
+          '<button class="conv-del" title="删除">✕</button>';
+        item.addEventListener('click', function (e) {
+          if (e.target.classList.contains('conv-del')) return;
+          store.activeId = c.id;
+          save();
+          closeSheets();
+          renderHeader();
+          renderMessages(true);
+        });
+        item.querySelector('.conv-del').addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!confirm('删除这个对话？')) return;
+          store.convs = store.convs.filter(function (x) { return x.id !== c.id; });
+          if (store.activeId === c.id) store.activeId = store.convs.length ? store.convs[0].id : null;
+          saveNow();
+          renderConvList();
+          renderHeader();
+          renderMessages(true);
+        });
+        list.appendChild(item);
+      });
+  }
+
+  function openSettings() {
+    var s = store.settings;
+    ui.setKey.value = s.apiKey;
+    ui.setModel.value = s.model;
+    ui.setProxy.value = s.proxyUrl;
+    ui.setThinking.checked = !!s.thinking;
+    ui.setRemOn.checked = !!s.reminders.enabled;
+    ui.setTone.value = s.reminders.tone;
+    ui.setNight.checked = !!s.reminders.night;
+    ui.setMorning.checked = !!s.reminders.morning;
+    ui.setNoon.checked = !!s.reminders.noon;
+    ui.setEvening.checked = !!s.reminders.evening;
+    ui.setPersona.value = s.persona;
+    ui.testResult.textContent = '';
+    ui.testResult.className = 'hint';
+    updatePreview();
+    openSheet('settings');
+  }
+
+  function updatePreview() {
+    var ctx = nowContext();
+    var slot = activeSlot(ctx.minutes);
+    var allowed = slot && hintAllowed(slot, ctx.ts);
+    ui.promptPreview.textContent = buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gapText(store.lastSeen, ctx.ts));
+  }
+
+  function bindSettings() {
+    ui.setKey.addEventListener('input', function (e) {
+      store.settings.apiKey = e.target.value.trim();
+      save(); checkKeyState();
+    });
+    ui.setModel.addEventListener('input', function (e) { store.settings.model = e.target.value.trim() || 'deepseek-flash'; save(); });
+    ui.setProxy.addEventListener('input', function (e) { store.settings.proxyUrl = e.target.value.trim(); save(); });
+    ui.setThinking.addEventListener('change', function (e) { store.settings.thinking = e.target.checked; save(); });
+    ui.setPersona.addEventListener('input', function (e) { store.settings.persona = e.target.value; save(); });
+
+    ui.setRemOn.addEventListener('change', function (e) {
+      store.settings.reminders.enabled = e.target.checked; save(); renderClock(); updatePreview();
+    });
+    ui.setTone.addEventListener('change', function (e) {
+      store.settings.reminders.tone = e.target.value; save(); renderClock(); updatePreview();
+    });
+    [['setNight', 'night'], ['setMorning', 'morning'], ['setNoon', 'noon'], ['setEvening', 'evening']]
+      .forEach(function (pair) {
+        var input = ui[pair[0]];
+        input.addEventListener('change', function (e) {
+          store.settings.reminders[pair[1]] = e.target.checked;
+          save(); updatePreview();
+        });
+      });
+
+    ui.btnTest.addEventListener('click', testConnection);
+
+    ui.btnClearAll.addEventListener('click', function () {
+      if (!confirm('清除全部聊天记录？不可恢复。')) return;
+      store.convs = [];
+      store.activeId = null;
+      store.lastSeen = 0;
+      store.hints = {};
+      store.lastHintTs = 0;
+      saveNow();
+      renderHeader();
+      renderMessages(true);
+      renderConvList();
+      closeSheets();
+      toast('已清除');
+    });
+
+    document.querySelectorAll('[data-close]').forEach(function (b) {
+      b.addEventListener('click', closeSheets);
+    });
+
+    ui.btnInstall.addEventListener('click', function () {
+      if (!installPrompt) { toast('请用浏览器菜单里的「添加到主屏幕」'); return; }
+      installPrompt.prompt();
+      installPrompt = null;
+      ui.btnInstall.hidden = true;
+    });
+  }
+
+  function checkKeyState() {
+    if (store.settings.apiKey) {
+      var c = getActiveConv();
+      if (!c.messages.length && ui.msgWrap.querySelector('#emptySetup')) renderMessages(true);
+    }
+  }
+
+  function testConnection() {
+    var btn = ui.btnTest;
+    btn.disabled = true;
+    ui.testResult.className = 'hint';
+    ui.testResult.textContent = '正在连接…';
+    var ctrl = null;
+    var timer = 0;
+    try {
+      if (window.AbortController) ctrl = new AbortController();
+    } catch (e) { ctrl = null; }
+    if (ctrl) timer = setTimeout(function () { ctrl.abort(); }, 25000);
+
+    callAPI([{ role: 'user', content: '只回复两个字：可用' }], { stream: false, signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) {
+        ui.testResult.className = 'hint ok';
+        ui.testResult.textContent = '✓ 连接成功。模型回了：' + ((r.content || '').slice(0, 30) || '(空)');
+      })
+      .catch(function (err) {
+        ui.testResult.className = 'hint bad';
+        ui.testResult.textContent = '✗ ' + explainError(err);
+      })
+      .then(function () {
+        if (timer) clearTimeout(timer);
+        btn.disabled = false;
+      });
+  }
+
+  /* ============================ toast ============================ */
+  var toastTimer = 0;
+  function toast(msg) {
+    ui.toast.textContent = msg;
+    ui.toast.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { ui.toast.classList.remove('on'); }, 3200);
+  }
+
+  /* ============================ 事件 ============================ */
+  function bindEvents() {
+    ui.btnMenu.addEventListener('click', function () { renderConvList(); openSheet('drawer'); });
+    ui.btnSettings.addEventListener('click', openSettings);
+    ui.timeChip.addEventListener('click', openSettings);
+    ui.scrim.addEventListener('click', closeSheets);
+    ui.btnNewConv.addEventListener('click', function () {
+      newConv(true);
+      renderConvList();
+      renderHeader();
+      renderMessages(true);
+      closeSheets();
+      ui.input.focus();
+    });
+
+    ui.input.addEventListener('input', function () { autoGrow(); updateSendBtn(); });
+    ui.input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    ui.btnSend.addEventListener('click', function () { if (busy) stop(); else send(); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeSheets();
+    });
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      installPrompt = e;
+      ui.btnInstall.hidden = false;
+    });
+  }
+
+  /* ============================ 启动 ============================ */
+  function init() {
+    cacheUi();
+    renderClock();
+    renderHeader();
+    renderMessages(true);
+    updateSendBtn();
+    bindEvents();
+    bindSettings();
+    autoGrow();
+
+    if (/[?&]new=1\b/.test(location.search)) {
+      newConv(true);
+      renderHeader();
+      renderMessages(true);
+    }
+
+    setInterval(renderClock, 20000);
+
+    if (!store.settings.apiKey) {
+      setTimeout(function () {
+        toast('先填一下 API Key 才能聊天');
+        openSettings();
+      }, 500);
+    }
+
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('./sw.js').then(function () {
+        if (ui.swState) ui.swState.textContent = '✓ 已缓存到本机，断网也能打开';
+      }).catch(function () {
+        if (ui.swState) ui.swState.textContent = '离线缓存未启用（不影响使用）';
+      });
+    } else if (ui.swState) {
+      ui.swState.textContent = '离线缓存需要 https 托管（直接用文件打开时不可用）';
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
