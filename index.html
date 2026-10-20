@@ -11,14 +11,11 @@
 <link rel="icon" href="./icons/favicon.png">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;overflow:hidden}
 body{
   background:#0c0f15;
   color:#e8ecf4;
   font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-  display:flex;flex-direction:column;
-  height:100vh;
-  height:var(--app-h, 100vh);
   overflow:hidden;
   overscroll-behavior:none;
 }
@@ -27,10 +24,12 @@ input,textarea,select{font:inherit;color:inherit}
 a{color:#7aa8ff}
 
 /* ---------- header ---------- */
+:root{--head-h:56px;--foot-h:72px;--bar-h:0px}
 header{
-  flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  position:fixed;top:0;left:0;right:0;
+  display:flex;align-items:center;gap:8px;
   padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
-  background:rgba(12,15,21,.82);backdrop-filter:blur(14px);
+  background:rgba(12,15,21,.92);backdrop-filter:blur(14px);
   border-bottom:1px solid #1b2130;
   z-index:5;
 }
@@ -49,7 +48,10 @@ header{
 
 /* ---------- messages ---------- */
 main{
-  flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  position:fixed;left:0;right:0;
+  top:var(--head-h);
+  bottom:calc(var(--foot-h) + var(--bar-h));
+  overflow-y:auto;overflow-x:hidden;
   padding:16px 14px 8px;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
@@ -112,9 +114,10 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
 
 /* ---------- composer ---------- */
 .composer{
-  flex:0 0 auto;display:flex;align-items:flex-end;gap:8px;
+  position:fixed;left:0;right:0;bottom:0;z-index:6;
+  display:flex;align-items:flex-end;gap:8px;
   padding:8px 12px calc(10px + env(safe-area-inset-bottom));
-  background:rgba(12,15,21,.9);backdrop-filter:blur(14px);
+  background:rgba(12,15,21,.96);backdrop-filter:blur(14px);
   border-top:1px solid #1b2130;
 }
 .composer .box{
@@ -247,7 +250,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
 /* 课表 */
 .class-bar{
-  flex:0 0 auto;padding:8px 14px;background:#132033;border-top:1px solid #1f2b40;
+  position:fixed;left:0;right:0;bottom:var(--foot-h);z-index:4;
+  padding:8px 14px;background:#132033;border-top:1px solid #1f2b40;
   color:#a9c4ef;font-size:13px;display:flex;align-items:center;gap:8px;
 }
 .class-bar[hidden]{display:none}
@@ -515,7 +519,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.5 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.6 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
@@ -558,11 +562,30 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
     } catch (e) { /* 老浏览器忽略 */ }
   }
+
+  // 固定头 / 固定输入栏 / 中间滚动：量实际高度写进 CSS 变量
+  function layout() {
+    try {
+      var hdr = document.querySelector('header');
+      var comp = document.querySelector('.composer');
+      var bar = document.querySelector('.class-bar');
+      var hh = hdr ? hdr.offsetHeight : 56;
+      var ch = comp ? comp.offsetHeight : 72;
+      var bh = (bar && !bar.hidden) ? bar.offsetHeight : 0;
+      var root = document.documentElement.style;
+      root.setProperty('--head-h', Math.max(40, hh) + 'px');
+      root.setProperty('--foot-h', Math.max(40, ch) + 'px');
+      root.setProperty('--bar-h', Math.max(0, bh) + 'px');
+    } catch (e) { /* 忽略 */ }
+  }
+
   setAppHeight();
+  layout();
   try {
-    window.addEventListener('resize', setAppHeight);
-    window.addEventListener('orientationchange', function () { setTimeout(setAppHeight, 120); });
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+    window.addEventListener('resize', function () { setAppHeight(); layout(); });
+    window.addEventListener('orientationchange', function () { setTimeout(function () { setAppHeight(); layout(); }, 150); });
+    window.addEventListener('load', layout);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { setAppHeight(); layout(); });
   } catch (e) { /* 忽略 */ }
 
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -1297,6 +1320,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function autoGrow() {
     ui.input.style.height = 'auto';
     ui.input.style.height = Math.min(132, ui.input.scrollHeight) + 'px';
+    layout();
   }
 
   /* ============================ 发送 ============================ */
@@ -1489,9 +1513,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function updateClassBar() {
     if (!ui.classBar) return;
     var nx = nextClass(new Date());
-    if (!nx) { ui.classBar.hidden = true; return; }
+    if (!nx) { ui.classBar.hidden = true; layout(); return; }
     var mins = Math.round((nx.ts - Date.now()) / 60000);
-    if (mins > 12 * 60) { ui.classBar.hidden = true; return; }
+    if (mins > 12 * 60) { ui.classBar.hidden = true; layout(); return; }
     ui.classBar.hidden = false;
     ui.classBar.classList.toggle('soon', mins <= 20);
     var t = new Date(nx.ts);
@@ -1499,6 +1523,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       (nx.course.room ? ' · ' + nx.course.room : '') +
       '（' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + '）';
     ui.classBarText.textContent = (mins <= 20 ? '⏰ ' : '📚 ') + txt;
+    layout();
   }
 
   function bindCourses() {
@@ -2090,6 +2115,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     bindCourses();
     autoGrow();
     updateClassBar();
+    layout();
 
     if (/[?&]new=1\b/.test(location.search)) {
       newConv(true);
