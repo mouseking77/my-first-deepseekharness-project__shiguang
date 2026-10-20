@@ -145,21 +145,21 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
   position:fixed;left:0;right:0;bottom:0;z-index:21;
   background:#11161f;border-top:1px solid #242c3c;
   border-radius:20px 20px 0 0;
-  max-height:88vh;
-  max-height:90dvh;
-  display:flex;flex-direction:column;overflow:hidden;
+  max-height:85vh;
+  max-height:85dvh;
+  display:block;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   transform:translateY(102%);transition:transform .26s cubic-bezier(.22,.9,.3,1);
   padding-bottom:env(safe-area-inset-bottom);
 }
 .sheet.on{transform:translateY(0)}
 .sheet-head{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:14px 16px 10px;border-bottom:1px solid #1b2130;flex:0 0 auto;
+  padding:14px 16px 10px;border-bottom:1px solid #1b2130;
+  position:sticky;top:0;z-index:3;background:#11161f;
 }
 .sheet-head h2{margin:0;font-size:16px;font-weight:600}
 .sheet-body{
-  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
-  min-height:0;flex:1 1 auto;
   padding:14px 16px 22px;display:flex;flex-direction:column;gap:12px;
 }
 .grab{width:36px;height:4px;border-radius:2px;background:#2a3345;margin:8px auto 0}
@@ -515,6 +515,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.4 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
@@ -1378,7 +1379,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var el = q(id);
     // 兜底：不依赖 dvh 支持，按真实可视高度限制面板高度
     var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight || 640;
-    el.style.maxHeight = Math.max(240, Math.round(vh - 16)) + 'px';
+    el.style.maxHeight = Math.max(240, Math.round(vh * 0.85)) + 'px';
     el.classList.add('on');
     ui.scrim.classList.add('on');
   }
@@ -2086,9 +2087,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     if (!store.settings.apiKey) {
       setTimeout(function () {
-        toast('先填一下 API Key 才能聊天');
-        openSettings();
-      }, 500);
+        toast('点右上角 ⚙ 填入 API Key 就能聊了');
+      }, 600);
     }
 
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
