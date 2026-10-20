@@ -129,10 +129,29 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
 /* ---------- composer ---------- */
 .composer{
   position:fixed;left:0;right:0;bottom:0;z-index:6;
-  display:flex;align-items:flex-end;gap:8px;
+  display:flex;flex-direction:column;gap:6px;
   padding:8px 12px calc(10px + env(safe-area-inset-bottom));
   background:rgba(12,15,21,.96);backdrop-filter:blur(14px);
   border-top:1px solid #1b2130;
+}
+.composer-row{display:flex;align-items:flex-end;gap:8px}
+.img-btn{
+  width:40px;height:40px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;font-size:18px;
+  background:#1b2333;border:1px solid #2a3448;color:#a9b6cc;
+}
+.img-btn:active{background:#232d40}
+.img-preview{position:relative;align-self:flex-start;max-width:60%}
+.img-preview img{display:block;max-height:88px;max-width:100%;border-radius:10px;border:1px solid #2a3448}
+.img-preview button{
+  position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;
+  background:#3a2330;border:1px solid #5a3444;color:#ff9b9b;font-size:14px;line-height:1;
+  display:grid;place-items:center;
+}
+.msg-img{display:block;max-width:100%;border-radius:10px;margin-bottom:6px}
+.img-gone{
+  font-size:12.5px;color:#7c879c;background:#141b27;border:1px dashed #2a3448;
+  border-radius:10px;padding:8px 10px;margin-bottom:6px;
 }
 .composer .box{
   flex:1;display:flex;align-items:flex-end;gap:6px;
@@ -327,10 +346,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 <div class="class-bar" id="classBar" hidden><span id="classBarText"></span></div>
 
 <div class="composer">
-  <div class="box">
-    <textarea id="input" rows="1" placeholder="和小深说点什么…" enterkeyhint="send"></textarea>
-    <button class="send-btn" id="btnSend" aria-label="发送">↑</button>
+  <div class="img-preview" id="imgPreview" hidden>
+    <img id="imgPreviewImg" alt="待发送的图片">
+    <button id="imgRemove" aria-label="移除图片">×</button>
   </div>
+  <div class="composer-row">
+    <button class="img-btn" id="btnImg" aria-label="发送图片">📷</button>
+    <div class="box">
+      <textarea id="input" rows="1" placeholder="和小深说点什么…" enterkeyhint="send"></textarea>
+      <button class="send-btn" id="btnSend" aria-label="发送">↑</button>
+    </div>
+  </div>
+  <input type="file" id="fileImg" accept="image/*" hidden>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -541,10 +568,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.11 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.12 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
-      <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
+      <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
       <p class="hint" id="swState"></p>
     </section>
 
@@ -675,6 +702,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   var saveTimer = 0;
+  var saveCount = 0;
   function save() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveNow, 180);
@@ -682,6 +710,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function saveNow() {
     clearTimeout(saveTimer);
     saveTimer = 0;
+    if (++saveCount % 8 === 0) {
+      try { ensureSpace(); } catch (e) { /* 忽略 */ }
+    }
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         convs: store.convs,
@@ -1146,6 +1177,228 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ].join('\n');
   }
 
+  /* ============================ 图片（IndexedDB） ============================ */
+  var imgCache = {};          // id -> dataUrl（内存缓存）
+  var pendingImg = null;      // 待发送的图片
+  var IMG_MAX_SIDE = 1280;
+  var IMG_QUALITY = 0.85;
+  var IMG_KEEP_MAX = 30;      // 只保留今天的，且最多 30 张
+
+  function openImgDB() {
+    return new Promise(function (resolve) {
+      try {
+        if (!window.indexedDB) { resolve(null); return; }
+        var req = indexedDB.open('shiguang-images', 1);
+        req.onupgradeneeded = function (e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath: 'id' });
+        };
+        req.onsuccess = function (e) { resolve(e.target.result); };
+        req.onerror = function () { resolve(null); };
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  function idbGet(id) {
+    return openImgDB().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (resolve) {
+        try {
+          var rq = db.transaction('images', 'readonly').objectStore('images').get(id);
+          rq.onsuccess = function () { resolve(rq.result || null); };
+          rq.onerror = function () { resolve(null); };
+        } catch (e) { resolve(null); }
+      });
+    });
+  }
+
+  function idbPut(rec) {
+    return openImgDB().then(function (db) {
+      if (!db) return false;
+      try {
+        var tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').put(rec);
+        return true;
+      } catch (e) { return false; }
+    });
+  }
+
+  function idbDel(id) {
+    return openImgDB().then(function (db) {
+      if (!db) return false;
+      try {
+        db.transaction('images', 'readwrite').objectStore('images').delete(id);
+        return true;
+      } catch (e) { return false; }
+    });
+  }
+
+  function idbAll() {
+    return openImgDB().then(function (db) {
+      if (!db) return [];
+      return new Promise(function (resolve) {
+        try {
+          var rq = db.transaction('images', 'readonly').objectStore('images').getAll();
+          rq.onsuccess = function () { resolve(rq.result || []); };
+          rq.onerror = function () { resolve([]); };
+        } catch (e) { resolve([]); }
+      });
+    });
+  }
+
+  function imgTargetSize(w, h, maxSide) {
+    w = Number(w) || 0; h = Number(h) || 0;
+    maxSide = maxSide || IMG_MAX_SIDE;
+    if (!w || !h) return { w: 0, h: 0 };
+    var scale = Math.min(1, maxSide / Math.max(w, h));
+    return { w: Math.max(1, Math.round(w * scale)), h: Math.max(1, Math.round(h * scale)) };
+  }
+
+  function fileToImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('decode')); };
+      img.src = url;
+    });
+  }
+
+  function downscale(img) {
+    var nw = img.naturalWidth || img.width;
+    var nh = img.naturalHeight || img.height;
+    var size = imgTargetSize(nw, nh, IMG_MAX_SIDE);
+    var cv = document.createElement('canvas');
+    cv.width = size.w;
+    cv.height = size.h;
+    var ctx = cv.getContext('2d');
+    ctx.drawImage(img, 0, 0, size.w, size.h);
+    return { dataUrl: cv.toDataURL('image/jpeg', IMG_QUALITY), w: size.w, h: size.h };
+  }
+
+  // 拼装发给模型的历史：只让最近的图片带图，更早的降级成文字
+  function composePayload(msgs, cache, maxImg) {
+    var out = [];
+    var used = 0;
+    maxImg = maxImg || 2;
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      var m = msgs[i];
+      var txt = m.content || '';
+      var im = m.img;
+      var canUse = im && im.id && !im.removed && cache[im.id] && used < maxImg;
+      if (m.role === 'user' && canUse) {
+        used++;
+        out.unshift({
+          role: 'user',
+          content: [
+            { type: 'text', text: txt || '看看这张图' },
+            { type: 'image_url', image_url: { url: cache[im.id], detail: 'high' } }
+          ]
+        });
+      } else {
+        if (im) txt = (txt ? txt + '\n' : '') + '（此前发送过一张图片）';
+        if (txt) out.unshift({ role: m.role, content: txt });
+      }
+    }
+    return out;
+  }
+
+  // 挑出该删的图片：不是今天的，或超出数量上限
+  function pickImagesToDrop(recs, todayKey, cap) {
+    var sorted = (recs || []).slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    var drop = [];
+    sorted.forEach(function (r, i) {
+      if (r.day !== todayKey || i >= cap) drop.push(r);
+    });
+    return drop;
+  }
+
+  function pruneImages() {
+    var today = dateKeyOf(new Date());
+    return idbAll().then(function (all) {
+      if (!all || !all.length) return;
+      var drop = pickImagesToDrop(all, today, IMG_KEEP_MAX);
+      if (!drop.length) return;
+      var dropped = {};
+      drop.forEach(function (r) {
+        dropped[r.id] = r.day;
+        delete imgCache[r.id];
+        idbDel(r.id);
+      });
+      var changed = false;
+      store.convs.forEach(function (c) {
+        c.messages.forEach(function (m) {
+          if (m.img && dropped[m.img.id] && !m.img.removed) {
+            m.img.removed = true;
+            m.img.removedAt = dayLabelShort(dropped[m.img.id]);
+            changed = true;
+          }
+        });
+      });
+      if (changed) saveNow();
+    }).catch(function () {});
+  }
+
+  function removeImagesOfDay(day) {
+    var changed = false;
+    store.convs.forEach(function (c) {
+      c.messages.forEach(function (m) {
+        if (m.img && !m.img.removed && dateKeyOf(new Date(m.ts || 0)) === day) {
+          m.img.removed = true;
+          m.img.removedAt = dayLabelShort(day);
+          delete imgCache[m.img.id];
+          idbDel(m.img.id);
+          changed = true;
+        }
+      });
+    });
+    if (changed) saveNow();
+  }
+
+  // 写前兜底：快满了就先删最老的原文（摘要保留），避免写入失败
+  function ensureSpace() {
+    try {
+      var LIMIT = 4.4 * 1024 * 1024;
+      if (bytesUsed() < LIMIT) return 0;
+      var days = collectDays().slice().reverse();
+      var removed = 0;
+      for (var i = 0; i < days.length - 2 && bytesUsed() >= LIMIT; i++) {
+        removed += deleteDay(days[i].key);
+      }
+      if (removed) {
+        store.lastClean = { ts: Date.now(), removed: removed };
+      }
+      return removed;
+    } catch (e) { return 0; }
+  }
+
+  function attachImages(root) {
+    if (!root) return;
+    var imgs = root.querySelectorAll('img[data-img]');
+    for (var i = 0; i < imgs.length; i++) {
+      (function (el) {
+        var id = el.getAttribute('data-img');
+        if (!id) return;
+        if (imgCache[id]) { el.src = imgCache[id]; return; }
+        idbGet(id).then(function (rec) {
+          if (rec && rec.dataUrl) {
+            imgCache[id] = rec.dataUrl;
+            el.src = rec.dataUrl;
+          } else if (el.parentNode) {
+            el.parentNode.removeChild(el);
+          }
+        });
+      })(imgs[i]);
+    }
+  }
+
+  function clearPendingImg() {
+    pendingImg = null;
+    if (ui.imgPreview) ui.imgPreview.hidden = true;
+    if (ui.imgPreviewImg) ui.imgPreviewImg.removeAttribute('src');
+    layout();
+  }
+
   /* ============================ 接口 ============================ */
   function apiUrl() {
     var base = (store.settings.proxyUrl || '').trim() || 'https://api.deepseek.com';
@@ -1342,6 +1595,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function cacheUi() {
     ['btnMenu', 'btnSettings', 'btnSend', 'input', 'msgWrap', 'convTitle', 'clockText',
+     'btnImg', 'fileImg', 'imgPreview', 'imgPreviewImg', 'imgRemove',
      'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
      'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
      'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona',
@@ -1389,7 +1643,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       }
       return out;
     }
-    return esc(m.content).replace(/\n/g, '<br>');
+    var html = '';
+    if (m.img) {
+      html += m.img.removed
+        ? '<div class="img-gone">📷 图片已于 ' + esc(m.img.removedAt || '') + ' 清理</div>'
+        : '<img class="msg-img" data-img="' + esc(m.img.id) + '" alt="图片">';
+    }
+    html += esc(m.content).replace(/\n/g, '<br>');
+    return html;
   }
 
   function buildMessageEl(m) {
@@ -1464,6 +1725,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       return;
     }
     c.messages.forEach(function (m) { wrap.appendChild(buildMessageEl(m)); });
+    attachImages(wrap);
     if (forceBottom || nearBottom) scrollToBottom(true);
   }
 
@@ -1489,7 +1751,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   function updateSendBtn() {
-    var hasText = ui.input.value.trim().length > 0;
+    var hasText = ui.input.value.trim().length > 0 || !!pendingImg;
     ui.btnSend.classList.toggle('on', hasText || busy);
     ui.btnSend.classList.toggle('stop', busy);
     ui.btnSend.textContent = busy ? '■' : '↑';
@@ -1505,7 +1767,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   /* ============================ 发送 ============================ */
   function send() {
     var text = ui.input.value.trim();
-    if (!text || busy) return;
+    var img = pendingImg;
+    if ((!text && !img) || busy) return;
+    if (img && /v4-?pro/i.test(store.settings.model || '')) {
+      toast('当前模型不支持图片，请先在设置里切到 deepseek-flash');
+      return;
+    }
+    text = text || '看看这张图';
     ui.input.value = '';
     autoGrow();
     updateSendBtn();
@@ -1520,12 +1788,23 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       ? buildSchedulePrompt()
       : buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gap);
 
-    var history = conv.messages
-      .filter(function (m) { return !m.error && m.content; })
-      .slice(-40)
-      .map(function (m) { return { role: m.role, content: m.content }; });
+    if (img) {
+      system += '\n\n【这次用户发了图片】先用文字逐字读出图中的内容（题目文字、数字、符号、上下标），确认无误后再回答或解答；看不清的地方就直接说看不清，不要猜。公式用 LaTeX 表示。';
+    }
+
+    var history = composePayload(
+      conv.messages.filter(function (m) { return !m.error && (m.content || m.img); }).slice(-40),
+      imgCache, 2
+    );
 
     var userMsg = { id: uid(), role: 'user', content: text, ts: ctx.ts };
+    if (img) {
+      var imgId = uid();
+      imgCache[imgId] = img.dataUrl;
+      userMsg.img = { id: imgId, w: img.w, h: img.h };
+      idbPut({ id: imgId, dataUrl: img.dataUrl, ts: ctx.ts, day: ctx.dayKey });
+      clearPendingImg();
+    }
     conv.messages.push(userMsg);
     if (conv.title === '新对话') conv.title = text.slice(0, 18) + (text.length > 18 ? '…' : '');
     conv.updatedAt = ctx.ts;
@@ -1543,7 +1822,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     streamMsg = aiMsg;
     updateSendBtn();
 
-    var payload = [{ role: 'system', content: system }].concat(history).concat([{ role: 'user', content: text }]);
+    var payloadUser = { role: 'user', content: text };
+    if (userMsg.img && imgCache[userMsg.img.id]) {
+      payloadUser.content = [
+        { type: 'text', text: text },
+        { type: 'image_url', image_url: { url: imgCache[userMsg.img.id], detail: 'high' } }
+      ];
+    }
+    var payload = [{ role: 'system', content: system }].concat(history).concat([payloadUser]);
     var timedOut = false;
     var timer = setTimeout(function () {
       timedOut = true;
@@ -2000,6 +2286,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (!out) throw new Error('empty');
       store.days[key] = { text: out, ts: Date.now(), src: 'auto' };
       saveNow();
+      removeImagesOfDay(key);
       if (ui.memory.classList.contains('on')) renderMemory();
       toast('摘要已生成');
     }).catch(function (err) {
@@ -2297,6 +2584,28 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.btnSend.addEventListener('click', function () { if (busy) stop(); else send(); });
 
+    ui.btnImg.addEventListener('click', function () { try { ui.fileImg.click(); } catch (e) { toast('这个浏览器不支持选图'); } });
+
+    ui.fileImg.addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      try { ui.fileImg.value = ''; } catch (err) { /* 忽略 */ }
+      if (!f) return;
+      if (f.type && f.type.indexOf('image/') !== 0) { toast('只能选图片'); return; }
+      toast('正在处理图片…');
+      fileToImage(f).then(function (im) {
+        var out = downscale(im);
+        pendingImg = { dataUrl: out.dataUrl, w: out.w, h: out.h };
+        ui.imgPreviewImg.src = out.dataUrl;
+        ui.imgPreview.hidden = false;
+        layout();
+        updateSendBtn();
+      }).catch(function () {
+        toast('这张图读不出来，换一张试试');
+      });
+    });
+
+    ui.imgRemove.addEventListener('click', clearPendingImg);
+
     ui.msgWrap.addEventListener('click', function (e) {
       var tag = e.target.closest ? e.target.closest('.think-tag') : null;
       if (!tag) return;
@@ -2352,6 +2661,15 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     setInterval(renderClock, 20000);
     setInterval(updateClassBar, 30000);
     setTimeout(autoSummarize, 2500);
+    setTimeout(function () { pruneImages(); }, 1200);
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) {
+        pruneImages();
+        renderClock();
+        updateClassBar();
+      }
+    });
 
     if (!store.settings.apiKey) {
       setTimeout(function () {

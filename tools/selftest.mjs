@@ -29,7 +29,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel,
     summaryBlock, dayLabelShort,
     parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock,
-    extractOps, applyScheduleOps, parseWeeksSpec, toWeekday, buildSchedulePrompt
+    extractOps, applyScheduleOps, parseWeeksSpec, toWeekday, buildSchedulePrompt,
+    imgTargetSize, composePayload, pickImagesToDrop
   };
 })();
 `);
@@ -433,6 +434,40 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('要求限制长度', sp.indexOf('不超过两行') >= 0);
   ok('录入模式也带当前时间', sp.indexOf('【现在】') >= 0);
   ok('录入模式带星期', /星期[一二三四五六日]/.test(sp));
+
+  console.log('\n[18] 图片：缩放与拼装');
+  const sz = G.imgTargetSize(4000, 3000, 1280);
+  eq('横图长边缩到 1280', sz.w, 1280);
+  eq('横图高按比例', sz.h, 960);
+  const sz2 = G.imgTargetSize(500, 1000, 1280);
+  ok('小图不放大', sz2.w === 500 && sz2.h === 1000);
+  eq('尺寸为 0 时兜底', G.imgTargetSize(0, 0, 1280).w, 0);
+
+  const cache = { a: 'data:a', b: 'data:b', c: 'data:c' };
+  const msgs = [
+    { role: 'user', content: '图1', img: { id: 'a' } },
+    { role: 'assistant', content: '看到了' },
+    { role: 'user', content: '图2', img: { id: 'b' } },
+    { role: 'user', content: '图3', img: { id: 'c' } },
+    { role: 'user', content: '最后一句' }
+  ];
+  const pl = G.composePayload(msgs, cache, 2);
+  const withImg = pl.filter((m) => Array.isArray(m.content)).length;
+  eq('只保留最近 2 张图', withImg, 2);
+  ok('最新的图还在', Array.isArray(pl[3].content) && pl[3].content[1].image_url.url === 'data:c');
+  ok('老图降级为文字', String(pl[0].content).indexOf('此前发送过一张图片') >= 0);
+  eq('文字消息不受影响', pl[4].content, '最后一句');
+
+  const recs = [
+    { id: 'x', day: '2026-10-19', ts: 1 },
+    { id: 'y', day: '2026-10-20', ts: 3 },
+    { id: 'z', day: '2026-10-20', ts: 2 }
+  ];
+  const drop = G.pickImagesToDrop(recs, '2026-10-20', 30);
+  eq('跨天的图要删', drop.length, 1);
+  eq('删的是昨天那张', drop[0].id, 'x');
+  const drop2 = G.pickImagesToDrop(recs, '2026-10-20', 1);
+  ok('超上限的也删', drop2.length === 2 && drop2.some((r) => r.id === 'z'));
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
