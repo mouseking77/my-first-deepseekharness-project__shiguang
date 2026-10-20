@@ -28,7 +28,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     callAPI, apiUrl, apiError,
     collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel,
     summaryBlock, dayLabelShort,
-    parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock
+    parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock,
+    extractOps, applyScheduleOps, parseWeeksSpec, toWeekday
   };
 })();
 `);
@@ -378,6 +379,45 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('课表块含课程名', blk.indexOf('数据结构') >= 0);
   const nxNow = G.nextClass(new Date());
   ok('有下一节时课表块会提到', !nxNow || blk.indexOf('下一节') >= 0);
+
+  console.log('\n[16] 对话改课表（操作协议）');
+  const S6 = G.store;
+  S6.courses = [];
+
+  const ex = G.extractOps('好的，已经改到教二108了。\n<op>{"action":"update","name":"数据结构","field":"room","value":"教二108"}</op>');
+  eq('剥离标签后只剩文字', ex.clean, '好的，已经改到教二108了。');
+  eq('解析出 1 个操作', ex.ops.length, 1);
+
+  const ex2 = G.extractOps('<op>{坏 JSON}</op>正常文字');
+  eq('坏 JSON 被忽略', ex2.ops.length, 0);
+  ok('坏 JSON 不污染正文', ex2.clean.indexOf('正常文字') >= 0);
+
+  const logsAdd = G.applyScheduleOps([
+    { action: 'add', name: '体育', room: '操场', weekday: 3, start: '14:00', end: '15:40', weeks: '1-16' }
+  ]);
+  eq('新增返回 1 条日志', logsAdd.length, 1);
+  eq('新增后课程数', S6.courses.length, 1);
+  eq('新增星期', S6.courses[0].weekday, 3);
+  eq('新增时间', S6.courses[0].start + '-' + S6.courses[0].end, '14:00-15:40');
+  eq('新增周数', S6.courses[0].weeks.length, 16);
+
+  const logsUpd = G.applyScheduleOps([{ action: 'update', name: '体育', field: 'room', value: '体育馆' }]);
+  ok('改教室有日志', logsUpd.length === 1 && logsUpd[0].indexOf('体育馆') >= 0);
+  eq('教室已改', S6.courses[0].room, '体育馆');
+
+  G.applyScheduleOps([{ action: 'update', name: '体育', field: 'time', value: '16:00-17:40' }]);
+  eq('改时间生效', S6.courses[0].start, '16:00');
+
+  G.applyScheduleOps([{ action: 'update', name: '体育', field: 'weekday', value: '周五' }]);
+  eq('改星期生效', S6.courses[0].weekday, 5);
+
+  const logsDel = G.applyScheduleOps([{ action: 'delete', name: '体育' }]);
+  eq('删除返回日志', logsDel.length, 1);
+  eq('删除后课程数', S6.courses.length, 0);
+
+  eq('周次解析：单周', G.parseWeeksSpec('单周').indexOf(2), -1);
+  eq('周次解析：1-4', G.parseWeeksSpec('1-4').join(','), '1,2,3,4');
+  eq('星期解析：周三', G.toWeekday('周三'), 3);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

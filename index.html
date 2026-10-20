@@ -234,6 +234,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 .day-msg b{color:#7aa8ff;font-weight:600}
 .day-msg b.ai{color:#3ddc97}
 .day-msg span{color:#5f6b80;font-size:11px;margin-left:6px}
+.oplog{margin-top:8px;padding:8px 10px;border-radius:8px;background:#12261c;border:1px solid #1f4433;color:#7fe0b0;font-size:12.5px;line-height:1.6}
+.oplog b{color:#a9f0cd;font-weight:600}
 .sheet-foot{padding:0 16px 16px;flex:0 0 auto}
 .day-sum{padding:0 12px 10px}
 .sum-text{
@@ -519,7 +521,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.6 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.7 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
@@ -539,6 +541,17 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   var STORE_KEY = 'shiguang.store.v1';
   var WEEK = ['日', '一', '二', '三', '四', '五', '六'];
   var COOLDOWN_MS = 45 * 60 * 1000;
+  var COURSE_OP_RULES = [
+    '【课表操作协议】',
+    '当用户明确要求修改课表（增课、删课、改教室、改时间、改星期、改周次）时，',
+    '在你回复的文字之后，另起一行输出操作标签，可以有多个，格式必须严格如下：',
+    '<op>{"action":"update","name":"数据结构","field":"room","value":"教二108"}</op>',
+    '<op>{"action":"add","name":"体育","room":"操场","weekday":3,"start":"14:00","end":"15:40","weeks":"1-16"}</op>',
+    '<op>{"action":"delete","name":"电影鉴赏"}</op>',
+    'update 的 field 只能是 room / time / weekday / weeks / name；time 的值形如 "14:00-15:40"。',
+    '只有你确实要修改课表时才输出标签；用户只是询问课表时绝对不要输出。',
+    '输出标签后，再用一句话告诉用户你改了什么，不要解释标签本身的存在。'
+  ].join('\n');
   var DEFAULT_SETTINGS = {
     apiKey: '',
     model: 'deepseek-flash',
@@ -935,6 +948,107 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return out.join('\n');
   }
 
+  function parseWeeksSpec(spec) {
+    if (Array.isArray(spec)) return spec.map(Number).filter(function (n) { return n > 0; });
+    var s = String(spec == null ? '' : spec).trim();
+    if (!s) return makeWeeks(1, 16, false, false);
+    if (/单周/.test(s)) return makeWeeks(1, 16, true, false);
+    if (/双周/.test(s)) return makeWeeks(1, 16, false, true);
+    var r = s.match(/(\d+)\s*-\s*(\d+)/);
+    if (r) return makeWeeks(Number(r[1]), Number(r[2]), false, false);
+    var nums = s.split(/[,\s、]+/).map(Number).filter(function (n) { return n > 0; });
+    return nums.length ? nums : makeWeeks(1, 16, false, false);
+  }
+
+  function toWeekday(v) {
+    var map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
+    if (typeof v === 'number') return Math.min(7, Math.max(1, v));
+    var s = String(v == null ? '' : v);
+    var m = s.match(/([一二三四五六日天])/);
+    if (m) return map[m[1]];
+    var n = Number(s);
+    return n >= 1 && n <= 7 ? n : 1;
+  }
+
+  function parseTimeRange(v) {
+    var m = String(v == null ? '' : v).match(/(\d{1,2}):(\d{2})\s*[-~到至]\s*(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    return { start: pad2(Number(m[1])) + ':' + m[2], end: pad2(Number(m[3])) + ':' + m[4] };
+  }
+
+  function extractOps(text) {
+    var ops = [];
+    var re = /<op>([\s\S]*?)<\/op>/gi;
+    var clean = String(text == null ? '' : text).replace(re, function (_, body) {
+      try {
+        var o = JSON.parse(body);
+        if (o && o.action) ops.push(o);
+      } catch (e) { /* 忽略坏 JSON */ }
+      return '';
+    });
+    return { clean: clean.replace(/\n{3,}/g, '\n\n').trim(), ops: ops };
+  }
+
+  function applyScheduleOps(ops) {
+    var logs = [];
+    (ops || []).forEach(function (op) {
+      if (!op || !op.action) return;
+
+      if (op.action === 'add') {
+        var name = String(op.name || '').trim();
+        if (!name) return;
+        var tr = parseTimeRange(String(op.start || '08:00') + '-' + String(op.end || '09:40')) ||
+          { start: '08:00', end: '09:40' };
+        store.courses.push({
+          id: uid(),
+          name: name,
+          room: String(op.room || '').trim(),
+          weekday: toWeekday(op.weekday),
+          start: tr.start,
+          end: tr.end,
+          weeks: parseWeeksSpec(op.weeks)
+        });
+        logs.push('新增《' + name + '》' + (tr.start ? ' ' + tr.start + '–' + tr.end : ''));
+        return;
+      }
+
+      if (op.action === 'delete') {
+        var before = store.courses.length;
+        store.courses = store.courses.filter(function (c) { return c.name !== op.name; });
+        if (store.courses.length < before) logs.push('删除《' + op.name + '》');
+        return;
+      }
+
+      if (op.action === 'update') {
+        var target = null;
+        store.courses.forEach(function (c) { if (!target && c.name === op.name) target = c; });
+        if (!target) return;
+        if (op.field === 'room') {
+          target.room = String(op.value || '').trim();
+          logs.push('《' + target.name + '》教室改为 ' + (target.room || '（空）'));
+        } else if (op.field === 'name') {
+          var nn = String(op.value || '').trim();
+          if (nn) { logs.push('《' + target.name + '》改名为《' + nn + '》'); target.name = nn; }
+        } else if (op.field === 'weekday') {
+          target.weekday = toWeekday(op.value);
+          logs.push('《' + target.name + '》改到周' + '一二三四五六日'[target.weekday - 1]);
+        } else if (op.field === 'time') {
+          var t2 = parseTimeRange(op.value);
+          if (t2) { target.start = t2.start; target.end = t2.end; logs.push('《' + target.name + '》时间改为 ' + t2.start + '–' + t2.end); }
+        } else if (op.field === 'weeks') {
+          target.weeks = parseWeeksSpec(op.value);
+          logs.push('《' + target.name + '》周次已更新');
+        }
+      }
+    });
+
+    if (logs.length) {
+      saveNow();
+      try { renderCourses(); updateClassBar(); layout(); } catch (e) { /* UI 未就绪时忽略 */ }
+    }
+    return logs;
+  }
+
   /* ============================ 提示词 ============================ */
   function directiveFor(slot, tone) {
     var soft = tone === 'warm'
@@ -971,6 +1085,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (mem) lines.push('', mem);
     var cls = courseBlock(ctx);
     if (cls) lines.push('', cls);
+    lines.push('', COURSE_OP_RULES);
     lines.push('', '回复尽量简洁，除非用户要求展开。');
     return lines.join('\n');
   }
@@ -1208,6 +1323,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         out += '<details class="think"><summary>💭 思考过程</summary><div>' + esc(m.reasoning) + '</div></details>';
       }
       out += renderMarkdown(m.content || '');
+      if (m.opLog && m.opLog.length) {
+        out += '<div class="oplog"><b>📚 课表已更新</b><br>' +
+          m.opLog.map(function (x) { return esc(x); }).join('<br>') + '</div>';
+      }
       return out;
     }
     return esc(m.content).replace(/\n/g, '<br>');
@@ -1380,6 +1499,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       }
     }).then(function (res) {
       if (res && res.content) aiMsg.content = res.content;
+      if (aiMsg.content) {
+        var parsed = extractOps(aiMsg.content);
+        if (parsed.ops.length) {
+          aiMsg.content = parsed.clean || '好的，改好了。';
+          var logs = applyScheduleOps(parsed.ops);
+          if (logs.length) aiMsg.opLog = logs;
+        }
+      }
       if (!aiMsg.content) aiMsg.content = '（这次没有返回内容，再试一次？）';
       if (allowed && slot) {
         store.hints[slot.id] = ctx.ts;
