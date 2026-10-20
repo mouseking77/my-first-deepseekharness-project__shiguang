@@ -223,6 +223,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 .day-msg b.ai{color:#3ddc97}
 .day-msg span{color:#5f6b80;font-size:11px;margin-left:6px}
 .sheet-foot{padding:0 16px 16px;flex:0 0 auto}
+.day-sum{padding:0 12px 10px}
+.sum-text{
+  font-size:13px;line-height:1.65;color:#c8d2e2;
+  background:#0f1420;border-left:2px solid #3d6fd6;
+  padding:8px 10px;border-radius:0 8px 8px 0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.day.open .sum-text{display:block;-webkit-line-clamp:unset;overflow:visible}
+.sum-empty{font-size:12.5px;color:#5f6b80}
+.sum-actions{display:flex;gap:8px;margin-top:8px}
+.sum-actions button{font-size:12px;padding:5px 10px;border-radius:8px;background:#1b2333;border:1px solid #26304a;color:#9fb0c8}
+.sum-edit{width:100%;min-height:72px;background:#0b111b;border:1px solid #26304a;border-radius:8px;padding:8px 10px;font-size:13px;color:#e8ecf4;line-height:1.6;resize:vertical;font-family:inherit;outline:none}
 
 /* conversation list */
 .conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:12px}
@@ -297,6 +309,15 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     <button class="btn" data-close>完成</button>
   </div>
   <div class="sheet-body">
+
+    <div class="card">
+      <div class="switch-row">
+        <span>自动生成每日摘要</span>
+        <input type="checkbox" id="memAuto">
+      </div>
+      <button class="btn full" id="memFill" style="margin-top:8px">补齐缺少的摘要</button>
+      <p class="hint">摘要由模型把当天对话压缩成 1–3 句事实，最近 5 天会作为背景喂给对话。生成需要你的 API Key（一天一次，成本约 0.0005 元）。</p>
+    </div>
 
     <div class="card">
       <div class="mem-bar"><i id="memBar"></i></div>
@@ -428,6 +449,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     proxyUrl: '',
     thinking: false,
     persona: '',
+    autoSummary: true,
     reminders: { enabled: true, tone: 'gentle', night: true, morning: true, noon: true, evening: true }
   };
 
@@ -453,10 +475,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     } catch (e) { s = null; }
 
     if (!s || typeof s !== 'object') {
-      s = { convs: [], activeId: null, settings: {}, hints: {}, lastHintTs: 0, lastSeen: 0 };
+      s = { convs: [], activeId: null, settings: {}, hints: {}, days: {}, lastHintTs: 0, lastSeen: 0 };
     }
     s.convs = Array.isArray(s.convs) ? s.convs : [];
     s.hints = s.hints && typeof s.hints === 'object' ? s.hints : {};
+    s.days = s.days && typeof s.days === 'object' ? s.days : {};
     s.settings = s.settings && typeof s.settings === 'object' ? s.settings : {};
     s.settings = mergeSettings(s.settings);
     s.lastHintTs = Number(s.lastHintTs) || 0;
@@ -497,6 +520,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         activeId: store.activeId,
         settings: store.settings,
         hints: store.hints,
+        days: store.days,
         lastHintTs: store.lastHintTs,
         lastSeen: store.lastSeen
       }));
@@ -554,6 +578,24 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function dateKeyOf(d) {
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function dayLabelShort(key) {
+    var d = new Date(key + 'T00:00:00');
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+
+  function summaryBlock() {
+    var keys = Object.keys(store.days || {}).sort().reverse().slice(0, 5);
+    if (!keys.length) return '';
+    var rows = [];
+    keys.forEach(function (k) {
+      var t = (store.days[k] && store.days[k].text) || '';
+      if (t) rows.push('- ' + dayLabelShort(k) + '：' + t);
+    });
+    if (!rows.length) return '';
+    return '【最近几天的记忆】\n' + rows.join('\n') +
+      '\n（这是你和用户过去几天的聊天摘要，只作为背景参考。不要主动复述，只在相关时自然用上。）';
   }
 
   function nowContext() {
@@ -635,6 +677,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       hint
     ];
     if (persona) lines.push('', '【关于用户】' + persona);
+    var mem = summaryBlock();
+    if (mem) lines.push('', mem);
     lines.push('', '回复尽量简洁，除非用户要求展开。');
     return lines.join('\n');
   }
@@ -840,7 +884,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona',
      'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState',
      'memory', 'btnMemory', 'memBar', 'memText', 'memStats', 'memList',
-     'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport'
+     'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport',
+     'memAuto', 'memFill'
     ].forEach(function (id) { ui[id] = q(id); });
   }
 
@@ -1121,7 +1166,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   /* ============================ 记录面板 ============================ */
-  var memState = { from: '', to: '', q: '', open: {} };
+  var memState = { from: '', to: '', q: '', open: {}, editing: {} };
 
   function bytesUsed() {
     try { return JSON.stringify(store).length * 2; } catch (e) { return 0; }
@@ -1157,13 +1202,32 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         '<span>' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + ' · ' + esc(i.conv) + '</span><br>' +
         esc(i.content.slice(0, 300)) + (i.content.length > 300 ? '…' : '') + '</div>';
     }).join('');
+
+    var rec = store.days[d.key];
+    var sumHtml;
+    if (memState.editing && memState.editing[d.key]) {
+      sumHtml = '<textarea class="sum-edit" data-editbox="' + d.key + '">' +
+        esc(rec ? rec.text : '') + '</textarea>' +
+        '<div class="sum-actions"><button data-save="' + d.key + '">保存</button>' +
+        '<button data-cancel="' + d.key + '">取消</button></div>';
+    } else if (rec && rec.text) {
+      sumHtml = '<div class="sum-text">' + esc(rec.text) + '</div>' +
+        '<div class="sum-actions"><button data-gen="' + d.key + '">重新生成</button>' +
+        '<button data-edit="' + d.key + '">编辑</button></div>';
+    } else {
+      sumHtml = '<div class="sum-empty">还没有摘要</div>' +
+        '<div class="sum-actions"><button data-gen="' + d.key + '">生成摘要</button></div>';
+    }
+
     return '<div class="day' + open + '" data-day="' + d.key + '">' +
       '<div class="day-head">' +
       '<div class="day-date">' + dayLabel(d.key) + '</div>' +
       '<div class="day-meta">' + d.count + ' 条</div>' +
       '<button class="day-del" data-del="' + d.key + '">删除</button>' +
       '<span class="day-toggle">▶</span>' +
-      '</div><div class="day-body">' + body + '</div></div>';
+      '</div>' +
+      '<div class="day-sum">' + sumHtml + '</div>' +
+      '<div class="day-body">' + body + '</div></div>';
   }
 
   function renderMemory() {
@@ -1209,6 +1273,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         return !hit;
       });
     });
+    if (store.days[key]) delete store.days[key];
     return n;
   }
 
@@ -1221,7 +1286,80 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         return !old;
       });
     });
+    Object.keys(store.days).forEach(function (k) {
+      if (k < dateStr) delete store.days[k];
+    });
     return n;
+  }
+
+  function dayMessages(key) {
+    var out = [];
+    store.convs.forEach(function (c) {
+      c.messages.forEach(function (m) {
+        if (dateKeyOf(new Date(m.ts || 0)) === key) out.push(m);
+      });
+    });
+    return out.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+  }
+
+  var summarizing = false;
+
+  function summarizeDay(key) {
+    if (summarizing) { toast('正在生成中，等一下'); return Promise.resolve(); }
+    var items = dayMessages(key).filter(function (m) { return m.content && !m.error; });
+    if (!items.length) { toast('这一天没有可总结的内容'); return Promise.resolve(); }
+    if (!store.settings.apiKey) { toast('先填 API Key 才能生成摘要'); return Promise.resolve(); }
+
+    var text = items.map(function (m) {
+      return (m.role === 'user' ? '我：' : '小深：') + String(m.content).slice(0, 400);
+    }).join('\n').slice(0, 8000);
+
+    summarizing = true;
+    toast('正在生成 ' + dayLabelShort(key) + ' 的摘要…');
+
+    return callAPI([
+      {
+        role: 'system',
+        content: '你在帮用户整理聊天记录。把下面这一天的对话压缩成 1–3 句事实摘要：用第三人称，只陈述发生了什么、用户在意什么，不要评论、不要客套、不要以「今天」开头。直接输出摘要本身，不要加任何前缀。'
+      },
+      { role: 'user', content: '日期：' + key + '\n\n' + text }
+    ], { stream: false }).then(function (r) {
+      var out = (r.content || '').trim().replace(/^摘要[：:]\s*/, '').slice(0, 240);
+      if (!out) throw new Error('empty');
+      store.days[key] = { text: out, ts: Date.now(), src: 'auto' };
+      saveNow();
+      if (ui.memory.classList.contains('on')) renderMemory();
+      toast('摘要已生成');
+    }).catch(function (err) {
+      toast('生成失败：' + explainError(err));
+    }).then(function () {
+      summarizing = false;
+    });
+  }
+
+  function missingDays() {
+    var today = dateKeyOf(new Date());
+    return collectDays().filter(function (d) {
+      return d.key < today && !((store.days[d.key] || {}).text);
+    });
+  }
+
+  function fillMissing() {
+    var list = missingDays().slice(0, 3);
+    if (!list.length) { toast('没有需要补的摘要'); return; }
+    var i = 0;
+    function next() {
+      if (i >= list.length) { toast('补齐完成'); return; }
+      summarizeDay(list[i++].key).then(next);
+    }
+    next();
+  }
+
+  function autoSummarize() {
+    if (!store.settings.autoSummary || !store.settings.apiKey) return;
+    var miss = missingDays();
+    if (!miss.length) return;
+    summarizeDay(miss[0].key);
   }
 
   function afterPurge(n) {
@@ -1254,6 +1392,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.memFrom.value = memState.from;
     ui.memTo.value = memState.to;
     ui.memSearch.value = memState.q;
+    ui.memAuto.checked = !!store.settings.autoSummary;
     renderMemory();
     openSheet('memory');
   }
@@ -1275,16 +1414,41 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     });
 
     ui.memList.addEventListener('click', function (e) {
-      var del = e.target.closest ? e.target.closest('[data-del]') : null;
+      function grab(sel) { return e.target.closest ? e.target.closest(sel) : null; }
+
+      var gen = grab('[data-gen]');
+      if (gen) { summarizeDay(gen.getAttribute('data-gen')); return; }
+
+      var ed = grab('[data-edit]');
+      if (ed) { memState.editing[ed.getAttribute('data-edit')] = true; renderMemory(); return; }
+
+      var cn = grab('[data-cancel]');
+      if (cn) { delete memState.editing[cn.getAttribute('data-cancel')]; renderMemory(); return; }
+
+      var sv = grab('[data-save]');
+      if (sv) {
+        var k2 = sv.getAttribute('data-save');
+        var row = sv.closest('.day');
+        var box = row ? row.querySelector('[data-editbox]') : null;
+        store.days[k2] = { text: (box ? box.value : '').trim().slice(0, 240), ts: Date.now(), src: 'manual' };
+        saveNow();
+        delete memState.editing[k2];
+        renderMemory();
+        toast('已保存');
+        return;
+      }
+
+      var del = grab('[data-del]');
       if (del) {
         var key = del.getAttribute('data-del');
         var n = countInDay(key);
         if (!n) return;
-        if (!confirm('删除 ' + dayLabel(key) + ' 的 ' + n + ' 条记录？不可恢复。')) return;
+        if (!confirm('删除 ' + dayLabel(key) + ' 的 ' + n + ' 条记录？该天的摘要也会一起删掉，不可恢复。')) return;
         afterPurge(deleteDay(key));
         return;
       }
-      var head = e.target.closest ? e.target.closest('.day-head') : null;
+
+      var head = grab('.day-head');
       if (head) {
         var day = head.parentElement;
         var k = day.getAttribute('data-day');
@@ -1301,6 +1465,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     });
 
     ui.btnExport.addEventListener('click', exportBackup);
+
+    ui.memAuto.addEventListener('change', function (e) {
+      store.settings.autoSummary = e.target.checked;
+      save();
+    });
+
+    ui.memFill.addEventListener('click', fillMissing);
   }
 
   function openSettings() {
@@ -1362,6 +1533,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       store.activeId = null;
       store.lastSeen = 0;
       store.hints = {};
+      store.days = {};
       store.lastHintTs = 0;
       saveNow();
       renderHeader();
@@ -1481,6 +1653,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     }
 
     setInterval(renderClock, 20000);
+    setTimeout(autoSummarize, 2500);
 
     if (!store.settings.apiKey) {
       setTimeout(function () {

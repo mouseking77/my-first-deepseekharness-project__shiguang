@@ -26,7 +26,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     buildSystemPrompt, directiveFor, renderMarkdown, inlineMd, explainError,
     readStream, fmtMsgTime, SLOTS, store, dateKeyOf, pad2, DAY_SLOT_KEYS: SLOTS.map(s => s.id),
     callAPI, apiUrl, apiError,
-    collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel
+    collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel,
+    summaryBlock, dayLabelShort
   };
 })();
 `);
@@ -313,6 +314,25 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   let left = 0;
   S2.convs.forEach(function (c) { left += c.messages.length; });
   eq('批量删除后只剩 1 条', left, 1);
+
+  console.log('\n[13] 每日摘要');
+  const S4 = G.store;
+  S4.days = {
+    '2026-10-01': { text: '用户在准备四级', ts: 0, src: 'auto' },
+    '2026-10-02': { text: '聊了课表和部署', ts: 0, src: 'auto' },
+    '2026-10-03': { text: '', ts: 0, src: 'auto' }
+  };
+  const block = G.summaryBlock();
+  ok('摘要块含日期', block.indexOf('10月1日') >= 0);
+  ok('摘要块含内容', block.indexOf('四级') >= 0);
+  ok('空摘要不入块', block.indexOf('10月3日') < 0);
+  ok('摘要块带使用约束', block.indexOf('不要主动复述') >= 0);
+  eq('dayLabelShort 格式', G.dayLabelShort('2026-10-03'), '10月3日');
+
+  G.deleteDay('2026-10-02');
+  ok('删一天会同时删摘要', !S4.days['2026-10-02']);
+  G.deleteBefore('2026-10-03');
+  ok('批量删除会清掉更早的摘要', !S4.days['2026-10-01']);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
