@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#0c0f15">
-<meta name="description" content="会看时间的 DeepSeek 聊天：知道现在几点，合适时才自然关心你一句。">
-<title>时光 · 会看时间的 DeepSeek</title>
+<meta name="description" content="会看时间�?DeepSeek 聊天：知道现在几点，合适时才自然关心你一句�?>
+<title>时光 · 会看时间�?DeepSeek</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="icon" href="./icons/favicon.png">
@@ -91,7 +91,7 @@ details.think summary{cursor:pointer;color:#6f7c93;list-style:none;display:flex;
 details.think summary::-webkit-details-marker{display:none}
 details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;background:#101623;border-radius:0 8px 8px 0;white-space:pre-wrap}
 
-/* 思考过程：用 JS 控制折叠，不依赖 <details>（老内核不支持会全部展开） */
+/* 思考过程：�?JS 控制折叠，不依赖 <details>（老内核不支持会全部展开�?*/
 .think{margin-bottom:8px}
 .think-tag{
   display:inline-flex;align-items:center;gap:5px;
@@ -203,7 +203,7 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
 .chipbox{display:flex;align-items:center;gap:8px;background:#0e1420;border:1px solid #263048;border-radius:10px;padding:9px 11px;font-size:14px}
 .chipbox input{appearance:none;width:18px;height:18px;border-radius:5px;border:1.5px solid #3a4763;flex:0 0 auto;position:relative;cursor:pointer}
 .chipbox input:checked{background:#2f6df6;border-color:#2f6df6}
-.chipbox input:checked::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:13px;line-height:15px;text-align:center}
+.chipbox input:checked::after{content:"�?;position:absolute;inset:0;color:#fff;font-size:13px;line-height:15px;text-align:center}
 
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
@@ -312,14 +312,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 <body>
 
 <header>
-  <button class="icon-btn" id="btnMenu" aria-label="对话记录">☰</button>
+  <button class="icon-btn" id="btnMenu" aria-label="对话记录">�?/button>
   <div class="head-mid">
-    <div class="conv-title" id="convTitle">新对话</div>
-    <button class="time-chip" id="timeChip" title="时间感知状态">
+    <div class="conv-title" id="convTitle">新对�?/div>
+    <button class="time-chip" id="timeChip" title="时间感知状�?>
       <span id="clockText">--:--</span><span class="dot"></span><span id="moodText"></span>
     </button>
   </div>
-  <button class="icon-btn" id="btnSettings" aria-label="设置">⚙</button>
+  <button class="icon-btn" id="btnSettings" aria-label="设置">�?/button>
 </header>
 
 <main id="messages"><div class="wrap" id="msgWrap"></div></main>
@@ -328,8 +328,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
 <div class="composer">
   <div class="box">
-    <textarea id="input" rows="1" placeholder="和小深说点什么…" enterkeyhint="send"></textarea>
-    <button class="send-btn" id="btnSend" aria-label="发送">↑</button>
+    <textarea id="input" rows="1" placeholder="和小深说点什么�? enterkeyhint="send"></textarea>
+    <button class="send-btn" id="btnSend" aria-label="发�?>�?/button>
   </div>
 </div>
 
@@ -340,7 +340,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   <div class="grab"></div>
   <div class="sheet-head">
     <h2>对话</h2>
-    <button class="btn" id="btnNewConv">＋ 新对话</button>
+    <button class="btn" id="btnNewConv">�?新对�?/button>
   </div>
   <div class="sheet-body" id="convList"></div>
   <div class="sheet-foot">
@@ -363,20 +363,20 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <span>自动生成每日摘要</span>
         <input type="checkbox" id="memAuto">
       </div>
-      <button class="btn full" id="memFill" style="margin-top:8px">补齐缺少的摘要</button>
-      <p class="hint">摘要由模型把当天对话压缩成 1–3 句事实，最近 5 天会作为背景喂给对话。生成需要你的 API Key（一天一次，成本约 0.0005 元）。</p>
+      <button class="btn full" id="memFill" style="margin-top:8px">补齐缺少的摘�?/button>
+      <p class="hint">摘要由模型把当天对话压缩�?1�? 句事实，最�?5 天会作为背景喂给对话。生成需要你�?API Key（一天一次，成本�?0.0005 元）�?/p>
     </div>
 
     <div class="card">
       <div class="mem-bar"><i id="memBar"></i></div>
-      <div class="mem-text" id="memText">—</div>
+      <div class="mem-text" id="memText">�?/div>
       <div class="filters">
-        <label class="f"><span>开始日期</span><input type="date" id="memFrom"></label>
+        <label class="f"><span>开始日�?/span><input type="date" id="memFrom"></label>
         <label class="f"><span>结束日期</span><input type="date" id="memTo"></label>
       </div>
       <input class="mem-search" id="memSearch" placeholder="搜索关键词（可选）" autocomplete="off">
       <div class="mem-stats" id="memStats"></div>
-      <button class="btn full" id="memReset" style="margin-top:10px">清除筛选</button>
+      <button class="btn full" id="memReset" style="margin-top:10px">清除筛�?/button>
     </div>
 
     <div id="memList"></div>
@@ -384,11 +384,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     <div class="card">
       <h3>批量清理</h3>
       <div class="filters">
-        <label class="f"><span>删除这个日期之前的全部记录</span><input type="date" id="memBefore"></label>
+        <label class="f"><span>删除这个日期之前的全部记�?/span><input type="date" id="memBefore"></label>
       </div>
       <button class="btn danger full" id="btnDelBefore" style="margin-top:10px">删除</button>
-      <button class="btn full" id="btnExport" style="margin-top:8px">导出备份（JSON）</button>
-      <p class="hint">删除不可恢复。导出的备份包含聊天记录和设置，<b>已自动去掉 API Key</b>。</p>
+      <button class="btn full" id="btnExport" style="margin-top:8px">导出备份（JSON�?/button>
+      <p class="hint">删除不可恢复。导出的备份包含聊天记录和设置，<b>已自动去�?API Key</b>�?/p>
     </div>
 
   </div>
@@ -409,27 +409,27 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <input type="checkbox" id="csOn">
       </div>
       <label class="field" style="margin-top:8px">
-        <span>学期第一周的周一（用来算第几周、过滤单双周）</span>
+        <span>学期第一周的周一（用来算第几周、过滤单双周�?/span>
         <input type="date" id="csTerm">
       </label>
-      <p class="hint">不填也能用，只是没法区分单双周课程。</p>
+      <p class="hint">不填也能用，只是没法区分单双周课程�?/p>
     </div>
 
     <div class="card">
       <h3>对话录入</h3>
-      <p class="hint" style="margin-top:0">不想一条条填？让它问你：周几、几点、什么课、哪个教室，你回答就行。</p>
-      <button class="btn primary full" id="csChat" style="margin-top:10px">💬 开始对话录入</button>
+      <p class="hint" style="margin-top:0">不想一条条填？让它问你：周几、几点、什么课、哪个教室，你回答就行�?/p>
+      <button class="btn primary full" id="csChat" style="margin-top:10px">💬 开始对话录�?/button>
     </div>
 
     <div class="card">
       <h3>批量导入</h3>
-      <textarea class="ta" id="csBulk" rows="5" spellcheck="false" placeholder="每行一节课，格式：&#10;周一 08:00-09:40 数据结构 @教三204 1-16周&#10;周二 14:00-15:40 计算机组成原理 @教二108 1-16周 单周"></textarea>
+      <textarea class="ta" id="csBulk" rows="5" spellcheck="false" placeholder="每行一节课，格式：&#10;周一 08:00-09:40 数据结构 @教三204 1-16�?#10;周二 14:00-15:40 计算机组成原�?@教二108 1-16�?单周"></textarea>
       <div class="sum-actions" style="margin-top:8px">
         <button class="btn" id="csSample">填入示例</button>
         <button class="btn" id="csPreview">解析预览</button>
         <button class="btn primary" id="csImport">导入</button>
       </div>
-      <p class="hint" id="csBulkHint">支持「周几 / 星期几」「HH:MM-HH:MM」「@教室」「1-16周 / 1,3,5周 / 单周 / 双周」，斜杠和空格随意。</p>
+      <p class="hint" id="csBulkHint">支持「周�?/ 星期几」「HH:MM-HH:MM」「@教室」�?-16�?/ 1,3,5�?/ 单周 / 双周」，斜杠和空格随意�?/p>
     </div>
 
     <div class="card">
@@ -441,10 +441,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
             <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="7">周日</option>
           </select>
         </label>
-        <label class="f"><span>开始</span><input type="time" id="csStart" value="08:00"></label>
+        <label class="f"><span>开�?/span><input type="time" id="csStart" value="08:00"></label>
         <label class="f"><span>结束</span><input type="time" id="csEnd" value="09:40"></label>
       </div>
-      <label class="field"><span>课程名</span><input id="csName" placeholder="数据结构"></label>
+      <label class="field"><span>课程�?/span><input id="csName" placeholder="数据结构"></label>
       <label class="field"><span>教室</span><input id="csRoom" placeholder="教三204"></label>
       <div class="filters">
         <label class="f"><span>从第几周</span><input type="number" id="csFrom" min="1" max="30" value="1"></label>
@@ -455,7 +455,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     </div>
 
     <div class="card">
-      <h3>已添加</h3>
+      <h3>已添�?/h3>
       <div id="csList"></div>
       <button class="btn danger full" id="csClear" style="margin-top:8px">清空课表</button>
     </div>
@@ -476,14 +476,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       <h3>接口</h3>
       <label class="field">
         <span>DeepSeek API Key</span>
-        <input id="setKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…">
+        <input id="setKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-�?>
       </label>
       <label class="field">
         <span>模型</span>
         <input id="setModel" list="modelList" autocomplete="off" spellcheck="false" placeholder="deepseek-flash">
         <datalist id="modelList">
           <option value="deepseek-flash">deepseek-flash（快，日常聊天）</option>
-          <option value="deepseek-v4-pro">deepseek-v4-pro（更强，更贵）</option>
+          <option value="deepseek-v4-pro">deepseek-v4-pro（更强，更贵�?/option>
         </datalist>
       </label>
       <label class="field">
@@ -491,18 +491,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <input id="setProxy" type="url" autocomplete="off" spellcheck="false" placeholder="留空 = https://api.deepseek.com">
       </label>
       <div class="switch-row">
-        <span>深度思考（更会推理，也更慢）</span>
+        <span>深度思考（更会推理，也更慢�?/span>
         <input type="checkbox" id="setThinking">
       </div>
       <button class="btn full" id="btnTest" style="margin-top:10px">测试连接</button>
       <p class="hint" id="testResult"></p>
-      <p class="hint">Key 只保存在这台手机的浏览器里。想更安全，可以填一个自己的中转地址（见 README）。</p>
+      <p class="hint">Key 只保存在这台手机的浏览器里。想更安全，可以填一个自己的中转地址（见 README）�?/p>
     </section>
 
     <section class="card">
-      <h3>时间感 · 主动关心</h3>
+      <h3>时间�?· 主动关心</h3>
       <div class="switch-row">
-        <span>让它偶尔主动关心我</span>
+        <span>让它偶尔主动关心�?/span>
         <input type="checkbox" id="setRemOn">
       </div>
       <label class="field" style="margin-top:6px">
@@ -510,33 +510,33 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <select id="setTone">
           <option value="quiet">不打扰（知道时间，但绝不主动提）</option>
           <option value="gentle">温和（推荐，最多一句）</option>
-          <option value="warm">热情（可以说两句）</option>
+          <option value="warm">热情（可以说两句�?/option>
         </select>
       </label>
       <div class="grid4">
-        <label class="chipbox"><input type="checkbox" id="setNight"><span>深夜 23:30–05:30</span></label>
-        <label class="chipbox"><input type="checkbox" id="setMorning"><span>清晨 06:00–09:30</span></label>
-        <label class="chipbox"><input type="checkbox" id="setNoon"><span>午间 11:30–13:00</span></label>
-        <label class="chipbox"><input type="checkbox" id="setEvening"><span>晚间 18:00–20:00</span></label>
+        <label class="chipbox"><input type="checkbox" id="setNight"><span>深夜 23:30�?5:30</span></label>
+        <label class="chipbox"><input type="checkbox" id="setMorning"><span>清晨 06:00�?9:30</span></label>
+        <label class="chipbox"><input type="checkbox" id="setNoon"><span>午间 11:30�?3:00</span></label>
+        <label class="chipbox"><input type="checkbox" id="setEvening"><span>晚间 18:00�?0:00</span></label>
       </div>
-      <p class="hint">同一时段每天最多提醒一次，两条提醒之间至少隔 45 分钟；它不会硬提时间，也不会打断你正在说的事。</p>
+      <p class="hint">同一时段每天最多提醒一次，两条提醒之间至少�?45 分钟；它不会硬提时间，也不会打断你正在说的事�?/p>
     </section>
 
     <section class="card">
       <h3>人设补充</h3>
       <label class="field">
-        <span>告诉它怎么称呼你、说话偏好</span>
+        <span>告诉它怎么称呼你、说话偏�?/span>
         <textarea id="setPersona" rows="3" placeholder="例如：叫我小林；说话简短点；别用感叹号"></textarea>
       </label>
     </section>
 
     <section class="card">
-      <h3>核对一下</h3>
+      <h3>核对一�?/h3>
       <details id="promptBox">
-        <summary>查看本轮会发给模型的系统提示词</summary>
+        <summary>查看本轮会发给模型的系统提示�?/summary>
         <pre class="prompt" id="promptPreview"></pre>
       </details>
-      <p class="hint">时间感知就是靠这段提示词实现的：它把当前时间、时段、距上次聊天多久一起告诉模型。</p>
+      <p class="hint">时间感知就是靠这段提示词实现的：它把当前时间、时段、距上次聊天多久一起告诉模型�?/p>
     </section>
 
     <section class="card">
@@ -544,7 +544,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       <p class="hint" style="margin-top:0" id="verLine">版本 v1.10 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
-      <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
+      <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢�?/p>
       <p class="hint" id="swState"></p>
     </section>
 
@@ -559,18 +559,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   /* ============================ 常量 ============================ */
   var STORE_KEY = 'shiguang.store.v1';
-  var WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+  var WEEK = ['�?, '一', '�?, '�?, '�?, '�?, '�?];
   var COOLDOWN_MS = 45 * 60 * 1000;
   var COURSE_OP_RULES = [
-    '【课表操作协议】',
-    '当用户明确要求修改课表（增课、删课、改教室、改时间、改星期、改周次）时，',
-    '在你回复的文字之后，另起一行输出操作标签，可以有多个，格式必须严格如下：',
+    '【课表操作协议�?,
+    '当用户明确要求修改课表（增课、删课、改教室、改时间、改星期、改周次）时�?,
+    '在你回复的文字之后，另起一行输出操作标签，可以有多个，格式必须严格如下�?,
     '<op>{"action":"update","name":"数据结构","field":"room","value":"教二108"}</op>',
     '<op>{"action":"add","name":"体育","room":"操场","weekday":3,"start":"14:00","end":"15:40","weeks":"1-16"}</op>',
     '<op>{"action":"delete","name":"电影鉴赏"}</op>',
-    'update 的 field 只能是 room / time / weekday / weeks / name；time 的值形如 "14:00-15:40"。',
-    '只有你确实要修改课表时才输出标签；用户只是询问课表时绝对不要输出。',
-    '输出标签后，再用一句话告诉用户你改了什么，不要解释标签本身的存在。'
+    'update �?field 只能�?room / time / weekday / weeks / name；time 的值形�?"14:00-15:40"�?,
+    '只有你确实要修改课表时才输出标签；用户只是询问课表时绝对不要输出�?,
+    '输出标签后，再用一句话告诉用户你改了什么，不要解释标签本身的存在�?
   ].join('\n');
   var DEFAULT_SETTINGS = {
     apiKey: '',
@@ -584,10 +584,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     reminders: { enabled: true, tone: 'gentle', night: true, morning: true, noon: true, evening: true }
   };
 
-  /* ============================ 小工具 ============================ */
+  /* ============================ 小工�?============================ */
   function q(id) { return document.getElementById(id); }
 
-  // 用 JS 量出真实可视高度，绕开 vh/dvh 在手机上的各种坑
+  // �?JS 量出真实可视高度，绕开 vh/dvh 在手机上的各种坑
   function setAppHeight() {
     try {
       var vv = window.visualViewport;
@@ -596,7 +596,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     } catch (e) { /* 老浏览器忽略 */ }
   }
 
-  // 固定头 / 固定输入栏 / 中间滚动：量实际高度写进 CSS 变量
+  // 固定�?/ 固定输入�?/ 中间滚动：量实际高度写进 CSS 变量
   function layout() {
     try {
       var hdr = document.querySelector('header');
@@ -694,7 +694,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         lastSeen: store.lastSeen
       }));
     } catch (e) {
-      toast('本地存储写不进去了（可能满了）');
+      toast('本地存储写不进去了（可能满了�?);
     }
   }
 
@@ -711,7 +711,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   function newConv(activate) {
-    var c = { id: uid(), title: '新对话', createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
+    var c = { id: uid(), title: '新对�?, createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
     store.convs.unshift(c);
     if (activate !== false) store.activeId = c.id;
     save();
@@ -722,10 +722,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   var SLOTS = [
     { id: 'night',   key: 'night',   label: '深夜', shiftPrev: true,
       test: function (m) { return m >= 1410 || m < 330; },
-      action: '用一句简短的话提醒对方别熬太晚、早点休息' },
+      action: '用一句简短的话提醒对方别熬太晚、早点休�? },
     { id: 'morning', key: 'morning', label: '清晨', shiftPrev: false,
       test: function (m) { return m >= 360 && m < 570; },
-      action: '道个早上好，顺口关心一下有没有吃早饭' },
+      action: '道个早上好，顺口关心一下有没有吃早�? },
     { id: 'noon',    key: 'noon',    label: '午间', shiftPrev: false,
       test: function (m) { return m >= 690 && m < 780; },
       action: '问一句午饭吃了没、要不要歇一会儿' },
@@ -751,7 +751,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function dayLabelShort(key) {
     var d = new Date(key + 'T00:00:00');
-    return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    return (d.getMonth() + 1) + '�? + d.getDate() + '�?;
   }
 
   function summaryBlock() {
@@ -760,7 +760,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var rows = [];
     keys.forEach(function (k) {
       var t = (store.days[k] && store.days[k].text) || '';
-      if (t) rows.push('- ' + dayLabelShort(k) + '：' + t);
+      if (t) rows.push('- ' + dayLabelShort(k) + '�? + t);
     });
     if (!rows.length) return '';
     return '【最近几天的记忆】\n' + rows.join('\n') +
@@ -778,7 +778,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       weekday: '星期' + WEEK[d.getDay()],
       period: periodOf(h),
       dayKey: dateKeyOf(d),
-      full: d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad2(h) + ':' + pad2(mi)
+      full: d.getFullYear() + '�? + (d.getMonth() + 1) + '�? + d.getDate() + '�?' + pad2(h) + ':' + pad2(mi)
     };
   }
 
@@ -805,20 +805,20 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   function gapText(prevTs, nowTs) {
-    if (!prevTs) return '这是你们的第一次聊天。';
+    if (!prevTs) return '这是你们的第一次聊天�?;
     var mins = Math.floor((nowTs - prevTs) / 60000);
     if (mins < 2) return '刚刚';
-    if (mins < 60) return mins + ' 分钟前';
+    if (mins < 60) return mins + ' 分钟�?;
     var hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + ' 小时前';
+    if (hrs < 24) return hrs + ' 小时�?;
     return Math.floor(hrs / 24) + ' 天前';
   }
 
   /* ============================ 课表 ============================ */
   function normCourse(s) {
     return String(s)
-      .replace(/[０-９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
-      .replace(/：/g, ':')
+      .replace(/[�?９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+      .replace(/�?g, ':')
       .replace(/[－—–~～至到]/g, '-')
       .replace(/[，、；;]/g, ',')
       .replace(/\t/g, ' ')
@@ -843,9 +843,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (!s) return null;
 
     var day = 1;
-    var dm = s.match(/(?:星期|周)\s*([一二三四五六日天1-7])/);
+    var dm = s.match(/(?:星期|�?\s*([一二三四五六日�?-7])/);
     if (dm) {
-      var map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
+      var map = { '一': 1, '�?: 2, '�?: 3, '�?: 4, '�?: 5, '�?: 6, '�?: 7, '�?: 7 };
       day = map[dm[1]] || Number(dm[1]) || 1;
       s = s.replace(dm[0], ' ');
     }
@@ -859,12 +859,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var odd = /单周/.test(s);
     var even = /双周/.test(s);
     var weeks = null;
-    var rng = s.match(/(\d{1,2})\s*-\s*(\d{1,2})\s*周/);
+    var rng = s.match(/(\d{1,2})\s*-\s*(\d{1,2})\s*�?);
     if (rng) {
       weeks = makeWeeks(Number(rng[1]), Number(rng[2]), odd, even);
       s = s.replace(rng[0], ' ');
     } else {
-      var lst = s.match(/([\d,\s]+)\s*周/);
+      var lst = s.match(/([\d,\s]+)\s*�?);
       if (lst) {
         weeks = lst[1].split(',').map(function (x) { return Number(x.trim()); })
           .filter(function (n) { return n > 0 && (!odd || n % 2 === 1) && (!even || n % 2 === 0); });
@@ -939,32 +939,38 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var n = Math.round((b - a) / 86400000);
     if (n === 0) return '今天';
     if (n === 1) return '明天';
-    return '周' + '日一二三四五六'[to.getDay()];
+    return '�? + '日一二三四五�?[to.getDay()];
   }
 
   function courseBlock(ctx) {
     if (!store.settings.useCourses || !store.courses || !store.courses.length) return '';
     var now = new Date();
     var w = weekNoOf(now);
-    var today = coursesOn(now, w);
-    var out = ['【我的课表】'];
-    if (w) out.push('这周是第 ' + w + ' 周。');
-    if (today.length) {
-      out.push('今天（' + ctx.weekday + '）有 ' + today.length + ' 节课：');
-      today.forEach(function (c) {
-        out.push('- ' + c.start + '–' + c.end + ' ' + c.name + (c.room ? '（' + c.room + '）' : ''));
+    var out = ['【我的课表�?];
+    if (w) out.push('这周是第 ' + w + ' 周�?);
+    out.push('接下�?7 天：');
+
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      var list = coursesOn(d, weekNoOf(d));
+      var wd = '日一二三四五�?[d.getDay()];
+      var label = i === 0 ? '今天' : (i === 1 ? '明天' : (i === 2 ? '后天' : '�? + wd));
+      var head = label + ' ' + (d.getMonth() + 1) + '�? + d.getDate() + '�?�? + wd;
+      if (!list.length) { out.push(head + '：没�?); continue; }
+      out.push(head + '�?);
+      list.forEach(function (c) {
+        out.push('  - ' + c.start + '�? + c.end + ' ' + c.name + (c.room ? '�? + c.room + '�? : ''));
       });
-    } else {
-      out.push('今天（' + ctx.weekday + '）没课。');
     }
+
     var nx = nextClass(now);
     if (nx) {
       var mins = Math.round((nx.ts - now.getTime()) / 60000);
-      var when = mins < 60 ? (mins + ' 分钟后') : (Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分钟后');
+      var when = mins < 60 ? (mins + ' 分钟�?) : (Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分钟�?);
       out.push('下一节：' + dayDiffLabel(now, nx.date) + ' ' + nx.course.start + ' ' + nx.course.name +
-        (nx.course.room ? '（' + nx.course.room + '）' : '') + '，' + when + '。');
+        (nx.course.room ? '�? + nx.course.room + '�? : '') + '�? + when + '�?);
     }
-    out.push('（课表是你本来就掌握的背景信息：用户问起时准确回答；没被问时不要反复提课表。）');
+    out.push('（用户问「明�?后天/这周」的课时，按上面的表准确回答；没被问到时不要主动念课表。）');
     return out.join('\n');
   }
 
@@ -981,7 +987,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   function toWeekday(v) {
-    var map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
+    var map = { '一': 1, '�?: 2, '�?: 3, '�?: 4, '�?: 5, '�?: 6, '�?: 7, '�?: 7 };
     if (typeof v === 'number') return Math.min(7, Math.max(1, v));
     var s = String(v == null ? '' : v);
     var m = s.match(/([一二三四五六日天])/);
@@ -1003,7 +1009,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       try {
         var o = JSON.parse(body);
         if (o && o.action) ops.push(o);
-      } catch (e) { /* 忽略坏 JSON */ }
+      } catch (e) { /* 忽略�?JSON */ }
       return '';
     });
     return { clean: clean.replace(/\n{3,}/g, '\n\n').trim(), ops: ops };
@@ -1028,14 +1034,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
           end: tr.end,
           weeks: parseWeeksSpec(op.weeks)
         });
-        logs.push('新增《' + name + '》' + (tr.start ? ' ' + tr.start + '–' + tr.end : ''));
+        logs.push('新增�? + name + '�? + (tr.start ? ' ' + tr.start + '�? + tr.end : ''));
         return;
       }
 
       if (op.action === 'delete') {
         var before = store.courses.length;
         store.courses = store.courses.filter(function (c) { return c.name !== op.name; });
-        if (store.courses.length < before) logs.push('删除《' + op.name + '》');
+        if (store.courses.length < before) logs.push('删除�? + op.name + '�?);
         return;
       }
 
@@ -1045,19 +1051,19 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         if (!target) return;
         if (op.field === 'room') {
           target.room = String(op.value || '').trim();
-          logs.push('《' + target.name + '》教室改为 ' + (target.room || '（空）'));
+          logs.push('�? + target.name + '》教室改�?' + (target.room || '（空�?));
         } else if (op.field === 'name') {
           var nn = String(op.value || '').trim();
-          if (nn) { logs.push('《' + target.name + '》改名为《' + nn + '》'); target.name = nn; }
+          if (nn) { logs.push('�? + target.name + '》改名为�? + nn + '�?); target.name = nn; }
         } else if (op.field === 'weekday') {
           target.weekday = toWeekday(op.value);
-          logs.push('《' + target.name + '》改到周' + '一二三四五六日'[target.weekday - 1]);
+          logs.push('�? + target.name + '》改到周' + '一二三四五六日'[target.weekday - 1]);
         } else if (op.field === 'time') {
           var t2 = parseTimeRange(op.value);
-          if (t2) { target.start = t2.start; target.end = t2.end; logs.push('《' + target.name + '》时间改为 ' + t2.start + '–' + t2.end); }
+          if (t2) { target.start = t2.start; target.end = t2.end; logs.push('�? + target.name + '》时间改�?' + t2.start + '�? + t2.end); }
         } else if (op.field === 'weeks') {
           target.weeks = parseWeeksSpec(op.value);
-          logs.push('《' + target.name + '》周次已更新');
+          logs.push('�? + target.name + '》周次已更新');
         }
       }
     });
@@ -1069,44 +1075,44 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return logs;
   }
 
-  /* ============================ 提示词 ============================ */
+  /* ============================ 提示�?============================ */
   function directiveFor(slot, tone) {
     var soft = tone === 'warm'
-      ? '如果对话氛围合适，可以用一两句自然、热一点的话'
-      : '如果对话氛围合适，可以在回复末尾用一句简短自然的话';
-    return soft + slot.action + '；如果对方正在忙、在讲正事、情绪低落，或者明确表示不用管，就自然跳过，不要提时间。';
+      ? '如果对话氛围合适，可以用一两句自然、热一点的�?
+      : '如果对话氛围合适，可以在回复末尾用一句简短自然的�?;
+    return soft + slot.action + '；如果对方正在忙、在讲正事、情绪低落，或者明确表示不用管，就自然跳过，不要提时间�?;
   }
 
   function buildSystemPrompt(ctx, slot, settings, gap) {
     var tone = settings.reminders.tone;
     var hint = (slot && settings.reminders.enabled && tone !== 'quiet')
-      ? '【本轮建议】现在是' + ctx.period + '（' + ctx.clock + '）。' + directiveFor(slot, tone)
-      : '【本轮建议】本轮不需要主动提时间，正常对话就好。';
+      ? '【本轮建议】现在是' + ctx.period + '�? + ctx.clock + '）�? + directiveFor(slot, tone)
+      : '【本轮建议】本轮不需要主动提时间，正常对话就好�?;
 
     var persona = (settings.persona || '').trim();
     var lines = [
-      '你是「小深」，一个由 DeepSeek 驱动的中文聊天助手。说话自然、真诚、口语化，不客套、不打官腔。',
+      '你是「小深」，一个由 DeepSeek 驱动的中文聊天助手。说话自然、真诚、口语化，不客套、不打官腔�?,
       '',
-      '【当前时间】' + ctx.full + '，' + ctx.weekday + '，' + ctx.period + '。',
-      '【距上次聊天】' + gap,
+      '【当前时间�? + ctx.full + '�? + ctx.weekday + '�? + ctx.period + '�?,
+      '【距上次聊天�? + gap,
       '',
-      '【关于时间，请遵守】',
-      '1. 你确实知道现在的准确时间。用户问到「现在几点 / 今天几号 / 星期几」时，直接准确回答。',
-      '2. 但不要为了显得你知道时间而硬提时间。绝大多数回复里根本不出现时间。',
-      '3. 只在合适的时候自然地「带一下」时间感，比如深夜提醒休息、清晨道早、饭点问一句吃没吃、久聊后提醒活动一下。一条回复最多一处，一句话说完，不要接二连三。',
-      '4. 不要生硬报时，不要说「根据当前时间」「我注意到现在是」这类元信息。也不要在同一段对话里反复用同一种关心句式。',
-      '5. 用户正在讲重要、紧急或情绪低落的事时，先认真回应内容；关心可以省略，或只放在最后半句。',
-      '6. 时间、日期、星期一律以上面的【当前时间】为准，不要自己推算，也不要编造。',
+      '【关于时间，请遵守�?,
+      '1. 你确实知道现在的准确时间。用户问到「现在几�?/ 今天几号 / 星期几」时，直接准确回答�?,
+      '2. 但不要为了显得你知道时间而硬提时间。绝大多数回复里根本不出现时间�?,
+      '3. 只在合适的时候自然地「带一下」时间感，比如深夜提醒休息、清晨道早、饭点问一句吃没吃、久聊后提醒活动一下。一条回复最多一处，一句话说完，不要接二连三�?,
+      '4. 不要生硬报时，不要说「根据当前时间」「我注意到现在是」这类元信息。也不要在同一段对话里反复用同一种关心句式�?,
+      '5. 用户正在讲重要、紧急或情绪低落的事时，先认真回应内容；关心可以省略，或只放在最后半句�?,
+      '6. 时间、日期、星期一律以上面的【当前时间】为准，不要自己推算，也不要编造�?,
       '',
       hint
     ];
-    if (persona) lines.push('', '【关于用户】' + persona);
+    if (persona) lines.push('', '【关于用户�? + persona);
     var mem = summaryBlock();
     if (mem) lines.push('', mem);
     var cls = courseBlock(ctx);
     if (cls) lines.push('', cls);
     lines.push('', COURSE_OP_RULES);
-    lines.push('', '回复尽量简洁，除非用户要求展开。');
+    lines.push('', '回复尽量简洁，除非用户要求展开�?);
     return lines.join('\n');
   }
 
@@ -1114,27 +1120,27 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var ctx = nowContext();
     var existing = store.courses.length
       ? store.courses.map(function (c) {
-        return '- 周' + '一二三四五六日'[c.weekday - 1] + ' ' + c.start + '–' + c.end + ' ' + c.name +
-          (c.room ? '（' + c.room + '）' : '');
+        return '- �? + '一二三四五六日'[c.weekday - 1] + ' ' + c.start + '�? + c.end + ' ' + c.name +
+          (c.room ? '�? + c.room + '�? : '');
       }).join('\n')
-      : '（还没有任何课程）';
+      : '（还没有任何课程�?;
 
     return [
-      '你是课表录入助手，正在用对话帮用户把课表录进来。',
+      '你是课表录入助手，正在用对话帮用户把课表录进来�?,
       '',
-      '【现在】' + ctx.full + '，' + ctx.weekday + '，' + ctx.period + '。',
-      '（用户问「今天几号/星期几/明天」时，以上面这个时间为准，直接准确回答。）',
+      '【现在�? + ctx.full + '�? + ctx.weekday + '�? + ctx.period + '�?,
+      '（用户问「今天几�?星期�?明天」时，以上面这个时间为准，直接准确回答。）',
       '',
-      '【已有课程】',
+      '【已有课程�?,
       existing,
       '',
-      '【怎么问】',
-      '1. 一次只问一个问题。顺序：星期几 → 上课时间 → 课程名 → 教室 → 周次（默认 1-16 周）。',
-      '2. 用户答「没有课」「跳过」「下一天」，就换下一个星期。',
-      '3. 信息齐了，立刻输出操作标签，然后在同一句里问下一节。',
-      '4. 每次回复不超过两行，不要解释规则，不要客套，不要重复用户说过的话。',
-      '5. 用户一口气说多节课时，分别输出多个标签，不要遗漏。',
-      '6. 用户说「好了」「结束」时，用一句话总结录了几节课，不要输出标签。',
+      '【怎么问�?,
+      '1. 一次只问一个问题。顺序：星期�?�?上课时间 �?课程�?�?教室 �?周次（默�?1-16 周）�?,
+      '2. 用户答「没有课」「跳过」「下一天」，就换下一个星期�?,
+      '3. 信息齐了，立刻输出操作标签，然后在同一句里问下一节�?,
+      '4. 每次回复不超过两行，不要解释规则，不要客套，不要重复用户说过的话�?,
+      '5. 用户一口气说多节课时，分别输出多个标签，不要遗漏�?,
+      '6. 用户说「好了」「结束」时，用一句话总结录了几节课，不要输出标签�?,
       '',
       COURSE_OP_RULES
     ].join('\n');
@@ -1156,23 +1162,23 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function explainError(err) {
     if (!err) return '未知错误';
-    if (err.name === 'AbortError') return '已停止。';
-    if (err.name === 'TimeoutError') return '请求超时了，检查一下网络。';
-    if (err.code === 'no_key') return '还没填 API Key：点右上角 ⚙ 打开设置 → 接口 → 粘贴 sk- 开头的那串。';
+    if (err.name === 'AbortError') return '已停止�?;
+    if (err.name === 'TimeoutError') return '请求超时了，检查一下网络�?;
+    if (err.code === 'no_key') return '还没�?API Key：点右上�?�?打开设置 �?接口 �?粘贴 sk- 开头的那串�?;
     if (err.code === 'network') {
-      return '连不上接口。可能是网络问题，也可能是浏览器跨域（CORS）被拦。如果电脑浏览器能用但手机不行，请到设置里填一个中转地址（README 里有免费方案）。';
+      return '连不上接口。可能是网络问题，也可能是浏览器跨域（CORS）被拦。如果电脑浏览器能用但手机不行，请到设置里填一个中转地址（README 里有免费方案）�?;
     }
     if (err.code === 'http') {
       var st = err.extra.status;
-      var d = err.extra.detail ? '（' + err.extra.detail + '）' : '';
-      if (st === 401) return '401 API Key 无效：检查是否复制完整、有没有多余空格。' + d;
-      if (st === 402) return '402 余额不足：去 platform.deepseek.com 充值。' + d;
-      if (st === 429) return '429 请求太频繁或额度受限，等一会儿再试。' + d;
-      if (st === 400) return '400 请求被拒。' + d;
-      if (st >= 500) return st + ' 服务端忙，稍后再试。' + d;
+      var d = err.extra.detail ? '�? + err.extra.detail + '�? : '';
+      if (st === 401) return '401 API Key 无效：检查是否复制完整、有没有多余空格�? + d;
+      if (st === 402) return '402 余额不足：去 platform.deepseek.com 充值�? + d;
+      if (st === 429) return '429 请求太频繁或额度受限，等一会儿再试�? + d;
+      if (st === 400) return '400 请求被拒�? + d;
+      if (st >= 500) return st + ' 服务端忙，稍后再试�? + d;
       return 'HTTP ' + st + ' ' + d;
     }
-    return err.message || '出错了';
+    return err.message || '出错�?;
   }
 
   function callAPI(messages, opts) {
@@ -1204,7 +1210,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
           try {
             var j = JSON.parse(t);
             detail = (j && j.error && (j.error.message || j.error.type)) || t;
-          } catch (e) { /* 纯文本 */ }
+          } catch (e) { /* 纯文�?*/ }
           throw apiError('http', { status: res.status, detail: String(detail).slice(0, 300) });
         });
       }
@@ -1219,7 +1225,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   function readStream(res, onDelta) {
-    if (!res.body) return Promise.reject(apiError('http', { status: 200, detail: '响应里没有流式主体' }));
+    if (!res.body) return Promise.reject(apiError('http', { status: 200, detail: '响应里没有流式主�? }));
     var reader = res.body.getReader();
     var dec = new TextDecoder('utf-8');
     var buf = '', content = '', reasoning = '';
@@ -1359,8 +1365,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function renderHeader() {
     var c = getActiveConv();
-    ui.convTitle.textContent = c.title || '新对话';
-    ui.input.placeholder = c.mode === 'schedule' ? '直接回答它的问题…' : '和小深说点什么…';
+    ui.convTitle.textContent = c.title || '新对�?;
+    ui.input.placeholder = c.mode === 'schedule' ? '直接回答它的问题�? : '和小深说点什么�?;
   }
 
   function messageHtml(m) {
@@ -1372,13 +1378,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       var out = '';
       if (m.reasoning) {
         out += '<div class="think">' +
-          '<button class="think-tag" type="button">💭 思考过程</button>' +
+          '<button class="think-tag" type="button">💭 思考过�?/button>' +
           '<div class="think-body">' + esc(m.reasoning) + '</div>' +
           '</div>';
       }
       out += renderMarkdown(m.content || '');
       if (m.opLog && m.opLog.length) {
-        out += '<div class="oplog"><b>📚 课表已更新</b><br>' +
+        out += '<div class="oplog"><b>📚 课表已更�?/b><br>' +
           m.opLog.map(function (x) { return esc(x); }).join('<br>') + '</div>';
       }
       return out;
@@ -1411,7 +1417,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var sameDay = d.toDateString() === now.toDateString();
     var y = new Date(now.getTime() - 86400000);
     var yDay = d.toDateString() === y.toDateString();
-    var head = sameDay ? '' : (yDay ? '昨天 ' : (d.getMonth() + 1) + '月' + d.getDate() + '日 ');
+    var head = sameDay ? '' : (yDay ? '昨天 ' : (d.getMonth() + 1) + '�? + d.getDate() + '�?');
     return head + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
 
@@ -1420,16 +1426,16 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var wrap = document.createElement('div');
     wrap.className = 'empty';
     wrap.innerHTML =
-      '<div class="logo">🕰️</div>' +
-      '<h2>它会看时间</h2>' +
-      '<p>现在是 <b>' + esc(ctx.clock) + '</b>（' + esc(ctx.period) + '）。小深知道当前时间、星期和你们多久没聊了。</p>' +
-      '<p>但它不会每句话都硬扯时间——只在深夜、清晨、饭点这种合适的时候，自然地关心你一句。</p>' +
+      '<div class="logo">🕰�?/div>' +
+      '<h2>它会看时�?/h2>' +
+      '<p>现在�?<b>' + esc(ctx.clock) + '</b>�? + esc(ctx.period) + '）。小深知道当前时间、星期和你们多久没聊了�?/p>' +
+      '<p>但它不会每句话都硬扯时间——只在深夜、清晨、饭点这种合适的时候，自然地关心你一句�?/p>' +
       '<div class="quick">' +
       '<button data-q="现在几点了？">现在几点</button>' +
-      '<button data-q="今天几号、星期几？">今天几号</button>' +
-      '<button data-q="你平时会注意时间吗？">时间感测试</button>' +
+      '<button data-q="今天几号、星期几�?>今天几号</button>' +
+      '<button data-q="你平时会注意时间吗？">时间感测�?/button>' +
       '</div>' +
-      '<div class="slots"><span>深夜 23:30–05:30</span><span>·</span><span>清晨 06:00–09:30</span><span>·</span><span>午间</span><span>·</span><span>晚间</span></div>' +
+      '<div class="slots"><span>深夜 23:30�?5:30</span><span>·</span><span>清晨 06:00�?9:30</span><span>·</span><span>午间</span><span>·</span><span>晚间</span></div>' +
       (store.settings.apiKey ? '' : '<button class="btn primary" id="emptySetup">先填 API Key</button>');
 
     if (!store.settings.apiKey) {
@@ -1486,8 +1492,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var hasText = ui.input.value.trim().length > 0;
     ui.btnSend.classList.toggle('on', hasText || busy);
     ui.btnSend.classList.toggle('stop', busy);
-    ui.btnSend.textContent = busy ? '■' : '↑';
-    ui.btnSend.setAttribute('aria-label', busy ? '停止' : '发送');
+    ui.btnSend.textContent = busy ? '�? : '�?;
+    ui.btnSend.setAttribute('aria-label', busy ? '停止' : '发�?);
   }
 
   function autoGrow() {
@@ -1496,7 +1502,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     layout();
   }
 
-  /* ============================ 发送 ============================ */
+  /* ============================ 发�?============================ */
   function send() {
     var text = ui.input.value.trim();
     if (!text || busy) return;
@@ -1521,7 +1527,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     var userMsg = { id: uid(), role: 'user', content: text, ts: ctx.ts };
     conv.messages.push(userMsg);
-    if (conv.title === '新对话') conv.title = text.slice(0, 18) + (text.length > 18 ? '…' : '');
+    if (conv.title === '新对�?) conv.title = text.slice(0, 18) + (text.length > 18 ? '�? : '');
     conv.updatedAt = ctx.ts;
     store.lastSeen = ctx.ts;
 
@@ -1558,12 +1564,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (aiMsg.content) {
         var parsed = extractOps(aiMsg.content);
         if (parsed.ops.length) {
-          aiMsg.content = parsed.clean || '好的，改好了。';
+          aiMsg.content = parsed.clean || '好的，改好了�?;
           var logs = applyScheduleOps(parsed.ops);
           if (logs.length) aiMsg.opLog = logs;
         }
       }
-      if (!aiMsg.content) aiMsg.content = '（这次没有返回内容，再试一次？）';
+      if (!aiMsg.content) aiMsg.content = '（这次没有返回内容，再试一次？�?;
       if (allowed && slot) {
         store.hints[slot.id] = ctx.ts;
         store.lastHintTs = ctx.ts;
@@ -1572,9 +1578,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (err && err.name === 'AbortError') {
         if (timedOut) {
           aiMsg.error = true;
-          aiMsg.content = aiMsg.content || '请求超过 120 秒没响应，已中断。检查网络，或者换个模型再试。';
+          aiMsg.content = aiMsg.content || '请求超过 120 秒没响应，已中断。检查网络，或者换个模型再试�?;
         } else {
-          aiMsg.content = (aiMsg.content || '') + '\n\n（已停止）';
+          aiMsg.content = (aiMsg.content || '') + '\n\n（已停止�?;
         }
       } else {
         aiMsg.error = true;
@@ -1615,7 +1621,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var list = ui.convList;
     list.innerHTML = '';
     if (!store.convs.length) {
-      list.innerHTML = '<p class="hint" style="text-align:center;padding:20px 0">还没有对话</p>';
+      list.innerHTML = '<p class="hint" style="text-align:center;padding:20px 0">还没有对�?/p>';
       return;
     }
     store.convs.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); })
@@ -1623,9 +1629,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         var item = document.createElement('div');
         item.className = 'conv-item' + (c.id === store.activeId ? ' active' : '');
         item.innerHTML =
-          '<div class="conv-main"><div class="conv-name">' + esc(c.title || '新对话') + '</div>' +
-          '<div class="conv-sub">' + c.messages.length + ' 条 · ' + fmtMsgTime(c.updatedAt || c.createdAt) + '</div></div>' +
-          '<button class="conv-del" title="删除">✕</button>';
+          '<div class="conv-main"><div class="conv-name">' + esc(c.title || '新对�?) + '</div>' +
+          '<div class="conv-sub">' + c.messages.length + ' �?· ' + fmtMsgTime(c.updatedAt || c.createdAt) + '</div></div>' +
+          '<button class="conv-del" title="删除">�?/button>';
         item.addEventListener('click', function (e) {
           if (e.target.classList.contains('conv-del')) return;
           store.activeId = c.id;
@@ -1636,7 +1642,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         });
         item.querySelector('.conv-del').addEventListener('click', function (e) {
           e.stopPropagation();
-          if (!confirm('删除这个对话？')) return;
+          if (!confirm('删除这个对话�?)) return;
           store.convs = store.convs.filter(function (x) { return x.id !== c.id; });
           if (store.activeId === c.id) store.activeId = store.convs.length ? store.convs[0].id : null;
           saveNow();
@@ -1654,18 +1660,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function fmtWeeks(c) {
     var w = c.weeks || [];
     if (!w.length) return '';
-    if (w.length === 1) return '第' + w[0] + '周';
+    if (w.length === 1) return '�? + w[0] + '�?;
     var odd = w.every(function (n) { return n % 2 === 1; });
     var even = w.every(function (n) { return n % 2 === 0; });
     if (odd && w.length > 2) return '单周';
     if (even && w.length > 2) return '双周';
-    return '第' + w[0] + '–' + w[w.length - 1] + '周';
+    return '�? + w[0] + '�? + w[w.length - 1] + '�?;
   }
 
   function renderCourses() {
     var list = ui.csList;
     if (!store.courses.length) {
-      list.innerHTML = '<p class="hint" style="text-align:center;padding:14px 0">还没有课，先在上面粘贴几行</p>';
+      list.innerHTML = '<p class="hint" style="text-align:center;padding:14px 0">还没有课，先在上面粘贴几�?/p>';
       return;
     }
     var html = '';
@@ -1677,9 +1683,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       day.forEach(function (c) {
         var sub = [c.room, fmtWeeks(c)].filter(Boolean).join(' · ');
         html += '<div class="course-row">' +
-          '<div class="course-time">' + esc(c.start + '–' + c.end) + '</div>' +
+          '<div class="course-time">' + esc(c.start + '�? + c.end) + '</div>' +
           '<div class="course-main"><div class="course-name">' + esc(c.name) + '</div>' +
-          '<div class="course-sub">' + esc(sub || '—') + '</div></div>' +
+          '<div class="course-sub">' + esc(sub || '�?) + '</div></div>' +
           '<button class="course-del" data-cdel="' + c.id + '">删除</button></div>';
       });
     }
@@ -1707,12 +1713,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (diff === '今天') {
       head = mins <= 60
         ? ('还有 ' + mins + ' 分钟')
-        : ('还有 ' + Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分');
+        : ('还有 ' + Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' �?);
     } else {
       head = diff + ' ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes());
     }
     var txt = head + ' · ' + nx.course.name + (nx.course.room ? ' · ' + nx.course.room : '');
-    ui.classBarText.textContent = (mins <= 20 ? '⏰ ' : '📚 ') + txt;
+    ui.classBarText.textContent = (mins <= 20 ? '�?' : '📚 ') + txt;
     layout();
     // 提示条出现会让消息区变矮，贴底时补一次滚动，避免最后几行被压住
     var host = ui.msgWrap.parentElement;
@@ -1739,40 +1745,40 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.csSample.addEventListener('click', function () {
       ui.csBulk.value = [
-        '周一 08:00-09:40 数据结构 @教三204 1-16周',
-        '周一 10:00-11:40 大学英语 @外语楼301 1-16周',
-        '周三 14:00-15:40 计算机组成原理 @教二108 1-16周',
-        '周五 19:00-20:40 电影鉴赏 @艺术楼 3-8周'
+        '周一 08:00-09:40 数据结构 @教三204 1-16�?,
+        '周一 10:00-11:40 大学英语 @外语�?01 1-16�?,
+        '周三 14:00-15:40 计算机组成原�?@教二108 1-16�?,
+        '周五 19:00-20:40 电影鉴赏 @艺术�?3-8�?
       ].join('\n');
-      ui.csBulkHint.textContent = '示例已填入，点「解析预览」看看认不认。';
+      ui.csBulkHint.textContent = '示例已填入，点「解析预览」看看认不认�?;
     });
 
     ui.csPreview.addEventListener('click', function () {
       var lines = String(ui.csBulk.value || '').split(/\n/).map(function (x) { return x.trim(); }).filter(Boolean);
       var ok = 0, bad = 0;
       lines.forEach(function (l) { if (parseCourseLine(l)) ok++; else bad++; });
-      ui.csBulkHint.textContent = '能认 ' + ok + ' 行' + (bad ? '，' + bad + ' 行认不出（检查「周几」和「08:00-09:40」）' : '') + '。';
+      ui.csBulkHint.textContent = '能认 ' + ok + ' �? + (bad ? '�? + bad + ' 行认不出（检查「周几」和�?8:00-09:40」）' : '') + '�?;
     });
 
     ui.csImport.addEventListener('click', function () {
       var lines = String(ui.csBulk.value || '').split(/\n/).map(function (x) { return x.trim(); }).filter(Boolean);
-      if (!lines.length) { toast('先粘贴几行课表'); return; }
+      if (!lines.length) { toast('先粘贴几行课�?); return; }
       var added = 0, bad = 0;
       lines.forEach(function (l) {
         var c = parseCourseLine(l);
         if (c) { store.courses.push(c); added++; } else bad++;
       });
       if (added) { saveNow(); renderCourses(); updateClassBar(); }
-      ui.csBulkHint.textContent = '导入 ' + added + ' 节' + (bad ? '，' + bad + ' 行没认出来' : '') + '。';
-      toast(added ? '已导入 ' + added + ' 节课' : '一行都没认出来');
+      ui.csBulkHint.textContent = '导入 ' + added + ' �? + (bad ? '�? + bad + ' 行没认出�? : '') + '�?;
+      toast(added ? '已导�?' + added + ' 节课' : '一行都没认出来');
     });
 
     ui.csAdd.addEventListener('click', function () {
       var name = ui.csName.value.trim();
-      if (!name) { toast('先填课程名'); return; }
+      if (!name) { toast('先填课程�?); return; }
       var start = ui.csStart.value || '08:00';
       var end = ui.csEnd.value || '09:40';
-      if (end <= start) { toast('结束时间要晚于开始时间'); return; }
+      if (end <= start) { toast('结束时间要晚于开始时�?); return; }
       var from = Number(ui.csFrom.value) || 1;
       var to = Number(ui.csTo.value) || from;
       store.courses.push({
@@ -1789,7 +1795,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       updateClassBar();
       ui.csName.value = '';
       ui.csRoom.value = '';
-      toast('已添加');
+      toast('已添�?);
     });
 
     ui.csList.addEventListener('click', function (e) {
@@ -1810,7 +1816,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       c.messages.push({
         id: uid(),
         role: 'assistant',
-        content: '咱们一节一节来。先从周一开始——周一有课吗？几点、什么课？',
+        content: '咱们一节一节来。先从周一开始——周一有课吗？几点、什么课�?,
         ts: Date.now()
       });
       saveNow();
@@ -1822,12 +1828,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.csClear.addEventListener('click', function () {
       if (!store.courses.length) { toast('课表本来就是空的'); return; }
-      if (!confirm('清空全部 ' + store.courses.length + ' 节课？')) return;
+      if (!confirm('清空全部 ' + store.courses.length + ' 节课�?)) return;
       store.courses = [];
       saveNow();
       renderCourses();
       updateClassBar();
-      toast('已清空');
+      toast('已清�?);
     });
   }
 
@@ -1845,7 +1851,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         var k = dateKeyOf(new Date(m.ts || 0));
         var d = map[k] || (map[k] = { key: k, count: 0, items: [] });
         d.count++;
-        d.items.push({ role: m.role, content: m.content || '', ts: m.ts || 0, conv: c.title || '新对话' });
+        d.items.push({ role: m.role, content: m.content || '', ts: m.ts || 0, conv: c.title || '新对�? });
       });
     });
     return Object.keys(map).sort().reverse().map(function (k) {
@@ -1856,17 +1862,17 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function dayLabel(key) {
     var d = new Date(key + 'T00:00:00');
-    return (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + WEEK[d.getDay()];
+    return (d.getMonth() + 1) + '�? + d.getDate() + '�?星期' + WEEK[d.getDay()];
   }
 
   function dayHtml(d) {
     var open = memState.open[d.key] ? ' open' : '';
     var body = d.items.map(function (i) {
       var t = new Date(i.ts);
-      var who = i.role === 'user' ? '<b>我</b>' : '<b class="ai">小深</b>';
+      var who = i.role === 'user' ? '<b>�?/b>' : '<b class="ai">小深</b>';
       return '<div class="day-msg">' + who +
         '<span>' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + ' · ' + esc(i.conv) + '</span><br>' +
-        esc(i.content.slice(0, 300)) + (i.content.length > 300 ? '…' : '') + '</div>';
+        esc(i.content.slice(0, 300)) + (i.content.length > 300 ? '�? : '') + '</div>';
     }).join('');
 
     var rec = store.days[d.key];
@@ -1881,16 +1887,16 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         '<div class="sum-actions"><button data-gen="' + d.key + '">重新生成</button>' +
         '<button data-edit="' + d.key + '">编辑</button></div>';
     } else {
-      sumHtml = '<div class="sum-empty">还没有摘要</div>' +
+      sumHtml = '<div class="sum-empty">还没有摘�?/div>' +
         '<div class="sum-actions"><button data-gen="' + d.key + '">生成摘要</button></div>';
     }
 
     return '<div class="day' + open + '" data-day="' + d.key + '">' +
       '<div class="day-head">' +
       '<div class="day-date">' + dayLabel(d.key) + '</div>' +
-      '<div class="day-meta">' + d.count + ' 条</div>' +
+      '<div class="day-meta">' + d.count + ' �?/div>' +
       '<button class="day-del" data-del="' + d.key + '">删除</button>' +
-      '<span class="day-toggle">▶</span>' +
+      '<span class="day-toggle">�?/span>' +
       '</div>' +
       '<div class="day-sum">' + sumHtml + '</div>' +
       '<div class="day-body">' + body + '</div></div>';
@@ -1912,14 +1918,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var bytes = bytesUsed();
     var pct = Math.min(100, bytes / (5 * 1024 * 1024) * 100);
     ui.memBar.style.width = pct.toFixed(1) + '%';
-    ui.memText.textContent = '已用 ' + (bytes / 1048576).toFixed(2) + ' MB / 5 MB（' + pct.toFixed(1) + '%）';
+    ui.memText.textContent = '已用 ' + (bytes / 1048576).toFixed(2) + ' MB / 5 MB�? + pct.toFixed(1) + '%�?;
 
     var total = rows.reduce(function (s, d) { return s + d.count; }, 0);
-    ui.memStats.textContent = '筛选结果：' + rows.length + ' 天 / ' + total + ' 条　·　全部共 ' + days.length + ' 天';
+    ui.memStats.textContent = '筛选结果：' + rows.length + ' �?/ ' + total + ' 条　·　全部�?' + days.length + ' �?;
 
     ui.memList.innerHTML = rows.length
       ? rows.map(dayHtml).join('')
-      : '<p class="hint" style="text-align:center;padding:18px 0">没有符合条件的记录</p>';
+      : '<p class="hint" style="text-align:center;padding:18px 0">没有符合条件的记�?/p>';
   }
 
   function countInDay(key) {
@@ -1971,33 +1977,33 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   var summarizing = false;
 
   function summarizeDay(key) {
-    if (summarizing) { toast('正在生成中，等一下'); return Promise.resolve(); }
+    if (summarizing) { toast('正在生成中，等一�?); return Promise.resolve(); }
     var items = dayMessages(key).filter(function (m) { return m.content && !m.error; });
-    if (!items.length) { toast('这一天没有可总结的内容'); return Promise.resolve(); }
+    if (!items.length) { toast('这一天没有可总结的内�?); return Promise.resolve(); }
     if (!store.settings.apiKey) { toast('先填 API Key 才能生成摘要'); return Promise.resolve(); }
 
     var text = items.map(function (m) {
-      return (m.role === 'user' ? '我：' : '小深：') + String(m.content).slice(0, 400);
+      return (m.role === 'user' ? '我：' : '小深�?) + String(m.content).slice(0, 400);
     }).join('\n').slice(0, 8000);
 
     summarizing = true;
-    toast('正在生成 ' + dayLabelShort(key) + ' 的摘要…');
+    toast('正在生成 ' + dayLabelShort(key) + ' 的摘要�?);
 
     return callAPI([
       {
         role: 'system',
-        content: '你在帮用户整理聊天记录。把下面这一天的对话压缩成 1–3 句事实摘要：用第三人称，只陈述发生了什么、用户在意什么，不要评论、不要客套、不要以「今天」开头。直接输出摘要本身，不要加任何前缀。'
+        content: '你在帮用户整理聊天记录。把下面这一天的对话压缩�?1�? 句事实摘要：用第三人称，只陈述发生了什么、用户在意什么，不要评论、不要客套、不要以「今天」开头。直接输出摘要本身，不要加任何前缀�?
       },
-      { role: 'user', content: '日期：' + key + '\n\n' + text }
+      { role: 'user', content: '日期�? + key + '\n\n' + text }
     ], { stream: false }).then(function (r) {
-      var out = (r.content || '').trim().replace(/^摘要[：:]\s*/, '').slice(0, 240);
+      var out = (r.content || '').trim().replace(/^摘要[�?]\s*/, '').slice(0, 240);
       if (!out) throw new Error('empty');
       store.days[key] = { text: out, ts: Date.now(), src: 'auto' };
       saveNow();
       if (ui.memory.classList.contains('on')) renderMemory();
-      toast('摘要已生成');
+      toast('摘要已生�?);
     }).catch(function (err) {
-      toast('生成失败：' + explainError(err));
+      toast('生成失败�? + explainError(err));
     }).then(function () {
       summarizing = false;
     });
@@ -2012,7 +2018,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function fillMissing() {
     var list = missingDays().slice(0, 3);
-    if (!list.length) { toast('没有需要补的摘要'); return; }
+    if (!list.length) { toast('没有需要补的摘�?); return; }
     var i = 0;
     function next() {
       if (i >= list.length) { toast('补齐完成'); return; }
@@ -2033,7 +2039,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     renderHeader();
     renderMessages(true);
     renderMemory();
-    toast(n ? '已删除 ' + n + ' 条记录' : '没有可删除的记录');
+    toast(n ? '已删�?' + n + ' 条记�? : '没有可删除的记录');
   }
 
   function exportBackup() {
@@ -2048,7 +2054,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       a.click();
       a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-      toast('已导出（不含 API Key）');
+      toast('已导出（不含 API Key�?);
     } catch (e) {
       toast('导出失败');
     }
@@ -2100,7 +2106,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         saveNow();
         delete memState.editing[k2];
         renderMemory();
-        toast('已保存');
+        toast('已保�?);
         return;
       }
 
@@ -2109,7 +2115,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         var key = del.getAttribute('data-del');
         var n = countInDay(key);
         if (!n) return;
-        if (!confirm('删除 ' + dayLabel(key) + ' 的 ' + n + ' 条记录？该天的摘要也会一起删掉，不可恢复。')) return;
+        if (!confirm('删除 ' + dayLabel(key) + ' �?' + n + ' 条记录？该天的摘要也会一起删掉，不可恢复�?)) return;
         afterPurge(deleteDay(key));
         return;
       }
@@ -2125,8 +2131,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.btnDelBefore.addEventListener('click', function () {
       var v = ui.memBefore.value;
-      if (!v) { toast('先选一个日期'); return; }
-      if (!confirm('删除 ' + v + ' 之前的全部记录？不可恢复。')) return;
+      if (!v) { toast('先选一个日�?); return; }
+      if (!confirm('删除 ' + v + ' 之前的全部记录？不可恢复�?)) return;
       afterPurge(deleteBefore(v));
     });
 
@@ -2196,7 +2202,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.btnTest.addEventListener('click', testConnection);
 
     ui.btnClearAll.addEventListener('click', function () {
-      if (!confirm('清除全部聊天记录？不可恢复。')) return;
+      if (!confirm('清除全部聊天记录？不可恢复�?)) return;
       store.convs = [];
       store.activeId = null;
       store.lastSeen = 0;
@@ -2208,7 +2214,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       renderMessages(true);
       renderConvList();
       closeSheets();
-      toast('已清除');
+      toast('已清�?);
     });
 
     document.querySelectorAll('[data-close]').forEach(function (b) {
@@ -2216,7 +2222,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     });
 
     ui.btnInstall.addEventListener('click', function () {
-      if (!installPrompt) { toast('请用浏览器菜单里的「添加到主屏幕」'); return; }
+      if (!installPrompt) { toast('请用浏览器菜单里的「添加到主屏幕�?); return; }
       installPrompt.prompt();
       installPrompt = null;
       ui.btnInstall.hidden = true;
@@ -2234,7 +2240,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var btn = ui.btnTest;
     btn.disabled = true;
     ui.testResult.className = 'hint';
-    ui.testResult.textContent = '正在连接…';
+    ui.testResult.textContent = '正在连接�?;
     var ctrl = null;
     var timer = 0;
     try {
@@ -2242,14 +2248,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     } catch (e) { ctrl = null; }
     if (ctrl) timer = setTimeout(function () { ctrl.abort(); }, 25000);
 
-    callAPI([{ role: 'user', content: '只回复两个字：可用' }], { stream: false, signal: ctrl ? ctrl.signal : undefined })
+    callAPI([{ role: 'user', content: '只回复两个字：可�? }], { stream: false, signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) {
         ui.testResult.className = 'hint ok';
-        ui.testResult.textContent = '✓ 连接成功。模型回了：' + ((r.content || '').slice(0, 30) || '(空)');
+        ui.testResult.textContent = '�?连接成功。模型回了：' + ((r.content || '').slice(0, 30) || '(�?');
       })
       .catch(function (err) {
         ui.testResult.className = 'hint bad';
-        ui.testResult.textContent = '✗ ' + explainError(err);
+        ui.testResult.textContent = '�?' + explainError(err);
       })
       .then(function () {
         if (timer) clearTimeout(timer);
@@ -2302,8 +2308,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (e.key === 'Escape') closeSheets();
     });
 
-    // 键盘弹出 / 横竖屏切换时，重算已打开面板的高度，避免内容被挡住
-    function resyncSheetHeight() {
+    // 键盘弹出 / 横竖屏切换时，重算已打开面板的高度，避免内容被挡�?    function resyncSheetHeight() {
       var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight || 640;
       ['drawer', 'settings', 'memory', 'courses'].forEach(function (id) {
         var el = q(id);
@@ -2349,18 +2354,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     if (!store.settings.apiKey) {
       setTimeout(function () {
-        toast('点右上角 ⚙ 填入 API Key 就能聊了');
+        toast('点右上角 �?填入 API Key 就能聊了');
       }, 600);
     }
 
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('./sw.js').then(function () {
-        if (ui.swState) ui.swState.textContent = '✓ 已缓存到本机，断网也能打开';
+        if (ui.swState) ui.swState.textContent = '�?已缓存到本机，断网也能打开';
       }).catch(function () {
         if (ui.swState) ui.swState.textContent = '离线缓存未启用（不影响使用）';
       });
     } else if (ui.swState) {
-      ui.swState.textContent = '离线缓存需要 https 托管（直接用文件打开时不可用）';
+      ui.swState.textContent = '离线缓存需�?https 托管（直接用文件打开时不可用�?;
     }
   }
 

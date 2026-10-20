@@ -377,6 +377,8 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   const blk = G.courseBlock({ weekday: '星期一' });
   ok('课表块含标题', blk.indexOf('【我的课表】') >= 0);
   ok('课表块含课程名', blk.indexOf('数据结构') >= 0);
+  ok('课表块含未来几天', blk.indexOf('明天') >= 0);
+  ok('课表块含教室', blk.indexOf('教三204') >= 0);
   const nxNow = G.nextClass(new Date());
   ok('有下一节时课表块会提到', !nxNow || blk.indexOf('下一节') >= 0);
 
