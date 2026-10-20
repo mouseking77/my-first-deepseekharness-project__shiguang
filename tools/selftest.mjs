@@ -25,7 +25,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     periodOf, activeSlot, slotDayKey, hintAllowed, gapText, nowContext,
     buildSystemPrompt, directiveFor, renderMarkdown, inlineMd, explainError,
     readStream, fmtMsgTime, SLOTS, store, dateKeyOf, pad2, DAY_SLOT_KEYS: SLOTS.map(s => s.id),
-    callAPI, apiUrl, apiError
+    callAPI, apiUrl, apiError,
+    collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel
   };
 })();
 `);
@@ -281,6 +282,37 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('缺 Key 拦截', eKey && eKey.code, 'no_key');
   S2.settings.apiKey = 'sk-test';
   S2.settings.proxyUrl = '';
+
+  console.log('\n[12] 记录面板：分组与删除');
+  const t1 = new Date(2026, 9, 1, 9, 0).getTime();
+  const t2 = new Date(2026, 9, 2, 9, 0).getTime();
+  const t3 = new Date(2026, 9, 3, 9, 0).getTime();
+  S2.convs = [
+    { id: 'a', title: '甲', updatedAt: t3, messages: [
+      { id: '1', role: 'user', content: '一号', ts: t1 },
+      { id: '2', role: 'assistant', content: '回复一', ts: t1 + 1000 }
+    ] },
+    { id: 'b', title: '乙', updatedAt: t3, messages: [
+      { id: '3', role: 'user', content: '二号', ts: t2 },
+      { id: '4', role: 'user', content: '三号', ts: t3 }
+    ] }
+  ];
+  let days = G.collectDays();
+  eq('按天分组天数', days.length, 3);
+  eq('最新一天排最前', days[0].key, '2026-10-03');
+  eq('最早一天有 2 条', days[2].count, 2);
+  eq('countInDay 单日计数', G.countInDay('2026-10-02'), 1);
+  ok('bytesUsed 大于 0', G.bytesUsed() > 0);
+  eq('dayLabel 格式', G.dayLabel('2026-10-03'), '10月3日 星期六');
+
+  eq('删除单天返回条数', G.deleteDay('2026-10-02'), 1);
+  eq('删除后剩 2 天', G.collectDays().length, 2);
+  eq('删除不影响别的天', G.countInDay('2026-10-03'), 1);
+
+  eq('批量删除更早返回条数', G.deleteBefore('2026-10-03'), 2);
+  let left = 0;
+  S2.convs.forEach(function (c) { left += c.messages.length; });
+  eq('批量删除后只剩 1 条', left, 1);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

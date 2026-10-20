@@ -199,6 +199,31 @@ pre.prompt{
 }
 details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
+/* memory panel */
+.mem-bar{height:6px;border-radius:3px;background:#1b2333;overflow:hidden;margin-bottom:8px}
+.mem-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3ddc97,#4d8dff);transition:width .3s}
+.mem-text{font-size:12px;color:#8b95a8}
+.filters{display:flex;gap:8px;margin-top:12px}
+.filters .f{flex:1;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#8b95a8}
+.filters input,.mem-search{width:100%;background:#0e1420;border:1px solid #263048;border-radius:10px;padding:8px 10px;font-size:14px;color:#e8ecf4;outline:none;font-family:inherit}
+.mem-search{margin-top:8px}
+.mem-stats{margin-top:10px;font-size:12px;color:#6f7c93}
+.day{border:1px solid #212a39;border-radius:12px;background:#141a25;margin-bottom:8px;overflow:hidden}
+.day-head{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
+.day-date{font-size:14px;font-weight:600;flex:0 0 auto;color:#dfe5ef}
+.day-meta{font-size:11.5px;color:#6f7c93;flex:1}
+.day-del{font-size:12px;color:#ff8b8b;padding:4px 9px;border-radius:8px;background:#2a1a22;flex:0 0 auto}
+.day-toggle{color:#5f6b80;font-size:10px;transition:transform .2s;flex:0 0 auto}
+.day.open .day-toggle{transform:rotate(90deg)}
+.day-body{display:none;border-top:1px solid #1c2432;padding:8px 12px 10px;max-height:280px;overflow:auto}
+.day.open .day-body{display:block}
+.day-msg{font-size:13px;line-height:1.6;padding:6px 0;border-bottom:1px dashed #1c2432;color:#c3cddd;word-break:break-word}
+.day-msg:last-child{border-bottom:0}
+.day-msg b{color:#7aa8ff;font-weight:600}
+.day-msg b.ai{color:#3ddc97}
+.day-msg span{color:#5f6b80;font-size:11px;margin-left:6px}
+.sheet-foot{padding:0 16px 16px;flex:0 0 auto}
+
 /* conversation list */
 .conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:12px}
 .conv-item:active{background:#1a2130}
@@ -259,6 +284,45 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     <button class="btn" id="btnNewConv">＋ 新对话</button>
   </div>
   <div class="sheet-body" id="convList"></div>
+  <div class="sheet-foot">
+    <button class="btn full" id="btnMemory">📅 按天查看 · 清理记录</button>
+  </div>
+</div>
+
+<!-- 记录 / 清理 -->
+<div class="sheet" id="memory">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2>记录</h2>
+    <button class="btn" data-close>完成</button>
+  </div>
+  <div class="sheet-body">
+
+    <div class="card">
+      <div class="mem-bar"><i id="memBar"></i></div>
+      <div class="mem-text" id="memText">—</div>
+      <div class="filters">
+        <label class="f"><span>开始日期</span><input type="date" id="memFrom"></label>
+        <label class="f"><span>结束日期</span><input type="date" id="memTo"></label>
+      </div>
+      <input class="mem-search" id="memSearch" placeholder="搜索关键词（可选）" autocomplete="off">
+      <div class="mem-stats" id="memStats"></div>
+      <button class="btn full" id="memReset" style="margin-top:10px">清除筛选</button>
+    </div>
+
+    <div id="memList"></div>
+
+    <div class="card">
+      <h3>批量清理</h3>
+      <div class="filters">
+        <label class="f"><span>删除这个日期之前的全部记录</span><input type="date" id="memBefore"></label>
+      </div>
+      <button class="btn danger full" id="btnDelBefore" style="margin-top:10px">删除</button>
+      <button class="btn full" id="btnExport" style="margin-top:8px">导出备份（JSON）</button>
+      <p class="hint">删除不可恢复。导出的备份包含聊天记录和设置，<b>已自动去掉 API Key</b>。</p>
+    </div>
+
+  </div>
 </div>
 
 <!-- 设置 -->
@@ -774,7 +838,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
      'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
      'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona',
-     'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState'
+     'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState',
+     'memory', 'btnMemory', 'memBar', 'memText', 'memStats', 'memList',
+     'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport'
     ].forEach(function (id) { ui[id] = q(id); });
   }
 
@@ -1013,7 +1079,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.scrim.classList.add('on');
   }
   function closeSheets() {
-    ['drawer', 'settings'].forEach(function (id) { q(id).classList.remove('on'); });
+    ['drawer', 'settings', 'memory'].forEach(function (id) { q(id).classList.remove('on'); });
     ui.scrim.classList.remove('on');
   }
 
@@ -1052,6 +1118,189 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         });
         list.appendChild(item);
       });
+  }
+
+  /* ============================ 记录面板 ============================ */
+  var memState = { from: '', to: '', q: '', open: {} };
+
+  function bytesUsed() {
+    try { return JSON.stringify(store).length * 2; } catch (e) { return 0; }
+  }
+
+  function collectDays() {
+    var map = {};
+    store.convs.forEach(function (c) {
+      c.messages.forEach(function (m) {
+        var k = dateKeyOf(new Date(m.ts || 0));
+        var d = map[k] || (map[k] = { key: k, count: 0, items: [] });
+        d.count++;
+        d.items.push({ role: m.role, content: m.content || '', ts: m.ts || 0, conv: c.title || '新对话' });
+      });
+    });
+    return Object.keys(map).sort().reverse().map(function (k) {
+      map[k].items.sort(function (a, b) { return a.ts - b.ts; });
+      return map[k];
+    });
+  }
+
+  function dayLabel(key) {
+    var d = new Date(key + 'T00:00:00');
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + WEEK[d.getDay()];
+  }
+
+  function dayHtml(d) {
+    var open = memState.open[d.key] ? ' open' : '';
+    var body = d.items.map(function (i) {
+      var t = new Date(i.ts);
+      var who = i.role === 'user' ? '<b>我</b>' : '<b class="ai">小深</b>';
+      return '<div class="day-msg">' + who +
+        '<span>' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + ' · ' + esc(i.conv) + '</span><br>' +
+        esc(i.content.slice(0, 300)) + (i.content.length > 300 ? '…' : '') + '</div>';
+    }).join('');
+    return '<div class="day' + open + '" data-day="' + d.key + '">' +
+      '<div class="day-head">' +
+      '<div class="day-date">' + dayLabel(d.key) + '</div>' +
+      '<div class="day-meta">' + d.count + ' 条</div>' +
+      '<button class="day-del" data-del="' + d.key + '">删除</button>' +
+      '<span class="day-toggle">▶</span>' +
+      '</div><div class="day-body">' + body + '</div></div>';
+  }
+
+  function renderMemory() {
+    var days = collectDays();
+    var rows = days.filter(function (d) {
+      if (memState.from && d.key < memState.from) return false;
+      if (memState.to && d.key > memState.to) return false;
+      if (memState.q) {
+        var q = memState.q.toLowerCase();
+        var hit = d.items.some(function (i) { return i.content.toLowerCase().indexOf(q) >= 0; });
+        if (!hit) return false;
+      }
+      return true;
+    });
+
+    var bytes = bytesUsed();
+    var pct = Math.min(100, bytes / (5 * 1024 * 1024) * 100);
+    ui.memBar.style.width = pct.toFixed(1) + '%';
+    ui.memText.textContent = '已用 ' + (bytes / 1048576).toFixed(2) + ' MB / 5 MB（' + pct.toFixed(1) + '%）';
+
+    var total = rows.reduce(function (s, d) { return s + d.count; }, 0);
+    ui.memStats.textContent = '筛选结果：' + rows.length + ' 天 / ' + total + ' 条　·　全部共 ' + days.length + ' 天';
+
+    ui.memList.innerHTML = rows.length
+      ? rows.map(dayHtml).join('')
+      : '<p class="hint" style="text-align:center;padding:18px 0">没有符合条件的记录</p>';
+  }
+
+  function countInDay(key) {
+    var n = 0;
+    store.convs.forEach(function (c) {
+      c.messages.forEach(function (m) { if (dateKeyOf(new Date(m.ts || 0)) === key) n++; });
+    });
+    return n;
+  }
+
+  function deleteDay(key) {
+    var n = 0;
+    store.convs.forEach(function (c) {
+      c.messages = c.messages.filter(function (m) {
+        var hit = dateKeyOf(new Date(m.ts || 0)) === key;
+        if (hit) n++;
+        return !hit;
+      });
+    });
+    return n;
+  }
+
+  function deleteBefore(dateStr) {
+    var n = 0;
+    store.convs.forEach(function (c) {
+      c.messages = c.messages.filter(function (m) {
+        var old = dateKeyOf(new Date(m.ts || 0)) < dateStr;
+        if (old) n++;
+        return !old;
+      });
+    });
+    return n;
+  }
+
+  function afterPurge(n) {
+    saveNow();
+    renderHeader();
+    renderMessages(true);
+    renderMemory();
+    toast(n ? '已删除 ' + n + ' 条记录' : '没有可删除的记录');
+  }
+
+  function exportBackup() {
+    try {
+      var copy = JSON.parse(JSON.stringify(store));
+      if (copy.settings) delete copy.settings.apiKey;
+      var blob = new Blob([JSON.stringify(copy, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'shiguang-backup-' + dateKeyOf(new Date()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast('已导出（不含 API Key）');
+    } catch (e) {
+      toast('导出失败');
+    }
+  }
+
+  function openMemory() {
+    ui.memFrom.value = memState.from;
+    ui.memTo.value = memState.to;
+    ui.memSearch.value = memState.q;
+    renderMemory();
+    openSheet('memory');
+  }
+
+  function bindMemory() {
+    ui.btnMemory.addEventListener('click', function () {
+      q('drawer').classList.remove('on');
+      renderMemory();
+      openSheet('memory');
+    });
+
+    ui.memFrom.addEventListener('change', function (e) { memState.from = e.target.value; renderMemory(); });
+    ui.memTo.addEventListener('change', function (e) { memState.to = e.target.value; renderMemory(); });
+    ui.memSearch.addEventListener('input', function (e) { memState.q = e.target.value.trim(); renderMemory(); });
+    ui.memReset.addEventListener('click', function () {
+      memState.from = ''; memState.to = ''; memState.q = '';
+      ui.memFrom.value = ''; ui.memTo.value = ''; ui.memSearch.value = '';
+      renderMemory();
+    });
+
+    ui.memList.addEventListener('click', function (e) {
+      var del = e.target.closest ? e.target.closest('[data-del]') : null;
+      if (del) {
+        var key = del.getAttribute('data-del');
+        var n = countInDay(key);
+        if (!n) return;
+        if (!confirm('删除 ' + dayLabel(key) + ' 的 ' + n + ' 条记录？不可恢复。')) return;
+        afterPurge(deleteDay(key));
+        return;
+      }
+      var head = e.target.closest ? e.target.closest('.day-head') : null;
+      if (head) {
+        var day = head.parentElement;
+        var k = day.getAttribute('data-day');
+        memState.open[k] = !memState.open[k];
+        day.classList.toggle('open');
+      }
+    });
+
+    ui.btnDelBefore.addEventListener('click', function () {
+      var v = ui.memBefore.value;
+      if (!v) { toast('先选一个日期'); return; }
+      if (!confirm('删除 ' + v + ' 之前的全部记录？不可恢复。')) return;
+      afterPurge(deleteBefore(v));
+    });
+
+    ui.btnExport.addEventListener('click', exportBackup);
   }
 
   function openSettings() {
@@ -1222,6 +1471,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     updateSendBtn();
     bindEvents();
     bindSettings();
+    bindMemory();
     autoGrow();
 
     if (/[?&]new=1\b/.test(location.search)) {
