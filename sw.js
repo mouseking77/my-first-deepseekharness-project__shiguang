@@ -1,5 +1,5 @@
 /* 时光 · 离线缓存 */
-const CACHE = 'shiguang-v9';
+const CACHE = 'shiguang-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -32,8 +32,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  // 只接管本应用自己的静态资源；API 请求（跨域）一律放行，不缓存
-  if (url.origin !== self.location.origin) return;
+  // 只接管本应用自己的静态资源；API 请求（跨域）一律放行，不缓�?  if (url.origin !== self.location.origin) return;
 
   if (req.mode === 'navigate') {
     e.respondWith(

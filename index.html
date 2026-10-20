@@ -91,6 +91,20 @@ details.think summary{cursor:pointer;color:#6f7c93;list-style:none;display:flex;
 details.think summary::-webkit-details-marker{display:none}
 details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;background:#101623;border-radius:0 8px 8px 0;white-space:pre-wrap}
 
+/* 思考过程：用 JS 控制折叠，不依赖 <details>（老内核不支持会全部展开） */
+.think{margin-bottom:8px}
+.think-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;color:#7c879c;background:#141b27;border:1px solid #232b3a;
+  padding:4px 10px;border-radius:999px;
+}
+.think-body{
+  display:none;margin-top:6px;padding:8px 10px;font-size:12.5px;line-height:1.6;
+  color:#8b95a8;background:#101623;border-left:2px solid #2c3547;
+  border-radius:0 8px 8px 0;white-space:pre-wrap;
+}
+.think.open .think-body{display:block}
+
 .typing{display:inline-flex;gap:4px;padding:2px 0}
 .typing i{width:6px;height:6px;border-radius:50%;background:#5a6780;animation:blink 1.2s infinite}
 .typing i:nth-child(2){animation-delay:.18s}
@@ -527,7 +541,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.9 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.10 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
@@ -1357,7 +1371,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       }
       var out = '';
       if (m.reasoning) {
-        out += '<details class="think"><summary>💭 思考过程</summary><div>' + esc(m.reasoning) + '</div></details>';
+        out += '<div class="think">' +
+          '<button class="think-tag" type="button">💭 思考过程</button>' +
+          '<div class="think-body">' + esc(m.reasoning) + '</div>' +
+          '</div>';
       }
       out += renderMarkdown(m.content || '');
       if (m.opLog && m.opLog.length) {
@@ -1697,6 +1714,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var txt = head + ' · ' + nx.course.name + (nx.course.room ? ' · ' + nx.course.room : '');
     ui.classBarText.textContent = (mins <= 20 ? '⏰ ' : '📚 ') + txt;
     layout();
+    // 提示条出现会让消息区变矮，贴底时补一次滚动，避免最后几行被压住
+    var host = ui.msgWrap.parentElement;
+    if (host && host.scrollHeight - host.scrollTop - host.clientHeight < 260) {
+      host.scrollTop = host.scrollHeight;
+    }
   }
 
   function bindCourses() {
@@ -2268,6 +2290,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     });
 
     ui.btnSend.addEventListener('click', function () { if (busy) stop(); else send(); });
+
+    ui.msgWrap.addEventListener('click', function (e) {
+      var tag = e.target.closest ? e.target.closest('.think-tag') : null;
+      if (!tag) return;
+      var box = tag.parentElement;
+      if (box) box.classList.toggle('open');
+    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeSheets();
