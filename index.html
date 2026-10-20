@@ -236,6 +236,22 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 .sum-actions button{font-size:12px;padding:5px 10px;border-radius:8px;background:#1b2333;border:1px solid #26304a;color:#9fb0c8}
 .sum-edit{width:100%;min-height:72px;background:#0b111b;border:1px solid #26304a;border-radius:8px;padding:8px 10px;font-size:13px;color:#e8ecf4;line-height:1.6;resize:vertical;font-family:inherit;outline:none}
 
+/* 课表 */
+.class-bar{
+  flex:0 0 auto;padding:8px 14px;background:#132033;border-top:1px solid #1f2b40;
+  color:#a9c4ef;font-size:13px;display:flex;align-items:center;gap:8px;
+}
+.class-bar[hidden]{display:none}
+.class-bar.soon{background:#2a1f16;border-top-color:#4a3320;color:#ffca8a}
+.class-bar b{color:#e8ecf4;font-weight:600}
+.course-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;background:#101623;border:1px solid #1f2838;margin-bottom:7px}
+.course-time{font-size:12px;color:#7aa8ff;flex:0 0 auto;font-variant-numeric:tabular-nums}
+.course-main{flex:1;min-width:0}
+.course-name{font-size:14px;color:#dfe5ef;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.course-sub{font-size:11.5px;color:#6f7c93;margin-top:1px}
+.course-del{font-size:12px;color:#ff8b8b;background:#2a1a22;padding:4px 9px;border-radius:8px;flex:0 0 auto}
+.ta{width:100%;background:#0e1420;border:1px solid #263048;border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.6;color:#e8ecf4;font-family:ui-monospace,Consolas,monospace;resize:vertical;outline:none}
+
 /* conversation list */
 .conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:12px}
 .conv-item:active{background:#1a2130}
@@ -279,6 +295,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
 <main id="messages"><div class="wrap" id="msgWrap"></div></main>
 
+<div class="class-bar" id="classBar" hidden><span id="classBarText"></span></div>
+
 <div class="composer">
   <div class="box">
     <textarea id="input" rows="1" placeholder="和小深说点什么…" enterkeyhint="send"></textarea>
@@ -297,7 +315,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   </div>
   <div class="sheet-body" id="convList"></div>
   <div class="sheet-foot">
-    <button class="btn full" id="btnMemory">📅 按天查看 · 清理记录</button>
+    <button class="btn full" id="btnCourses">📚 我的课表</button>
+    <button class="btn full" id="btnMemory" style="margin-top:8px">📅 按天查看 · 清理记录</button>
   </div>
 </div>
 
@@ -341,6 +360,69 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       <button class="btn danger full" id="btnDelBefore" style="margin-top:10px">删除</button>
       <button class="btn full" id="btnExport" style="margin-top:8px">导出备份（JSON）</button>
       <p class="hint">删除不可恢复。导出的备份包含聊天记录和设置，<b>已自动去掉 API Key</b>。</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- 课表 -->
+<div class="sheet" id="courses">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2>我的课表</h2>
+    <button class="btn" data-close>完成</button>
+  </div>
+  <div class="sheet-body">
+
+    <div class="card">
+      <div class="switch-row">
+        <span>在对话里带上课表</span>
+        <input type="checkbox" id="csOn">
+      </div>
+      <label class="field" style="margin-top:8px">
+        <span>学期第一周的周一（用来算第几周、过滤单双周）</span>
+        <input type="date" id="csTerm">
+      </label>
+      <p class="hint">不填也能用，只是没法区分单双周课程。</p>
+    </div>
+
+    <div class="card">
+      <h3>批量导入</h3>
+      <textarea class="ta" id="csBulk" rows="5" spellcheck="false" placeholder="每行一节课，格式：&#10;周一 08:00-09:40 数据结构 @教三204 1-16周&#10;周二 14:00-15:40 计算机组成原理 @教二108 1-16周 单周"></textarea>
+      <div class="sum-actions" style="margin-top:8px">
+        <button class="btn" id="csSample">填入示例</button>
+        <button class="btn" id="csPreview">解析预览</button>
+        <button class="btn primary" id="csImport">导入</button>
+      </div>
+      <p class="hint" id="csBulkHint">支持「周几 / 星期几」「HH:MM-HH:MM」「@教室」「1-16周 / 1,3,5周 / 单周 / 双周」，斜杠和空格随意。</p>
+    </div>
+
+    <div class="card">
+      <h3>添加一节课</h3>
+      <div class="filters">
+        <label class="f"><span>星期</span>
+          <select id="csDay">
+            <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
+            <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="7">周日</option>
+          </select>
+        </label>
+        <label class="f"><span>开始</span><input type="time" id="csStart" value="08:00"></label>
+        <label class="f"><span>结束</span><input type="time" id="csEnd" value="09:40"></label>
+      </div>
+      <label class="field"><span>课程名</span><input id="csName" placeholder="数据结构"></label>
+      <label class="field"><span>教室</span><input id="csRoom" placeholder="教三204"></label>
+      <div class="filters">
+        <label class="f"><span>从第几周</span><input type="number" id="csFrom" min="1" max="30" value="1"></label>
+        <label class="f"><span>到第几周</span><input type="number" id="csTo" min="1" max="30" value="16"></label>
+      </div>
+      <label class="chipbox" style="margin-top:10px"><input type="checkbox" id="csOdd"><span>只上单周</span></label>
+      <button class="btn primary full" id="csAdd" style="margin-top:10px">添加</button>
+    </div>
+
+    <div class="card">
+      <h3>已添加</h3>
+      <div id="csList"></div>
+      <button class="btn danger full" id="csClear" style="margin-top:8px">清空课表</button>
     </div>
 
   </div>
@@ -450,6 +532,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     thinking: false,
     persona: '',
     autoSummary: true,
+    termStart: '',
+    useCourses: true,
     reminders: { enabled: true, tone: 'gentle', night: true, morning: true, noon: true, evening: true }
   };
 
@@ -480,6 +564,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     s.convs = Array.isArray(s.convs) ? s.convs : [];
     s.hints = s.hints && typeof s.hints === 'object' ? s.hints : {};
     s.days = s.days && typeof s.days === 'object' ? s.days : {};
+    s.courses = Array.isArray(s.courses) ? s.courses : [];
+    s.courses.forEach(function (c) { if (!c.id) c.id = uid(); if (!Array.isArray(c.weeks)) c.weeks = []; });
     s.settings = s.settings && typeof s.settings === 'object' ? s.settings : {};
     s.settings = mergeSettings(s.settings);
     s.lastHintTs = Number(s.lastHintTs) || 0;
@@ -521,6 +607,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         settings: store.settings,
         hints: store.hints,
         days: store.days,
+        courses: store.courses,
         lastHintTs: store.lastHintTs,
         lastSeen: store.lastSeen
       }));
@@ -645,6 +732,160 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return Math.floor(hrs / 24) + ' 天前';
   }
 
+  /* ============================ 课表 ============================ */
+  function normCourse(s) {
+    return String(s)
+      .replace(/[０-９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+      .replace(/：/g, ':')
+      .replace(/[－—–~～至到]/g, '-')
+      .replace(/[，、；;]/g, ',')
+      .replace(/\t/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function makeWeeks(from, to, odd, even) {
+    var out = [];
+    from = Math.max(1, from || 1);
+    to = Math.max(from, to || from);
+    for (var w = from; w <= to; w++) {
+      if (odd && w % 2 === 0) continue;
+      if (even && w % 2 === 1) continue;
+      out.push(w);
+    }
+    return out;
+  }
+
+  function parseCourseLine(raw) {
+    var s = normCourse(raw);
+    if (!s) return null;
+
+    var day = 1;
+    var dm = s.match(/(?:星期|周)\s*([一二三四五六日天1-7])/);
+    if (dm) {
+      var map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
+      day = map[dm[1]] || Number(dm[1]) || 1;
+      s = s.replace(dm[0], ' ');
+    }
+
+    var tm = s.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+    if (!tm) return null;
+    var start = pad2(Number(tm[1])) + ':' + tm[2];
+    var end = pad2(Number(tm[3])) + ':' + tm[4];
+    s = s.replace(tm[0], ' ');
+
+    var odd = /单周/.test(s);
+    var even = /双周/.test(s);
+    var weeks = null;
+    var rng = s.match(/(\d{1,2})\s*-\s*(\d{1,2})\s*周/);
+    if (rng) {
+      weeks = makeWeeks(Number(rng[1]), Number(rng[2]), odd, even);
+      s = s.replace(rng[0], ' ');
+    } else {
+      var lst = s.match(/([\d,\s]+)\s*周/);
+      if (lst) {
+        weeks = lst[1].split(',').map(function (x) { return Number(x.trim()); })
+          .filter(function (n) { return n > 0 && (!odd || n % 2 === 1) && (!even || n % 2 === 0); });
+        s = s.replace(lst[0], ' ');
+      }
+    }
+    s = s.replace(/单周|双周/g, ' ');
+    if (!weeks || !weeks.length) weeks = makeWeeks(1, 16, odd, even);
+
+    var room = '';
+    var at = s.indexOf('@');
+    if (at >= 0) {
+      room = s.slice(at + 1).trim();
+      s = s.slice(0, at);
+    }
+    s = s.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+
+    var parts = s.split(' ').filter(Boolean);
+    var name = parts.join(' ');
+    if (!room && parts.length >= 2) {
+      var last = parts[parts.length - 1];
+      if (/^[A-Za-z]?\d{2,4}$/.test(last) || /(教|楼|室|馆|场|区|中心)/.test(last)) {
+        room = last;
+        name = parts.slice(0, -1).join(' ');
+      }
+    }
+    if (!name) return null;
+    return { id: uid(), name: name, room: room, weekday: day, start: start, end: end, weeks: weeks };
+  }
+
+  function weekNoOf(date) {
+    if (!store.settings.termStart) return null;
+    var t0 = new Date(store.settings.termStart + 'T00:00:00');
+    if (isNaN(t0.getTime())) return null;
+    var a = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate());
+    var b = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var days = Math.round((b - a) / 86400000);
+    if (days < 0) return null;
+    return Math.floor(days / 7) + 1;
+  }
+
+  function coursesOn(date, week) {
+    var wd = date.getDay() === 0 ? 7 : date.getDay();
+    return store.courses.filter(function (c) {
+      if (Number(c.weekday) !== wd) return false;
+      if (week && c.weeks && c.weeks.length && c.weeks.indexOf(week) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+  }
+
+  function classStartTs(date, course) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(),
+      Number(course.start.slice(0, 2)), Number(course.start.slice(3, 5))).getTime();
+  }
+
+  function nextClass(now) {
+    if (!store.courses || !store.courses.length) return null;
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      var list = coursesOn(d, weekNoOf(d));
+      for (var j = 0; j < list.length; j++) {
+        var ts = classStartTs(d, list[j]);
+        if (ts > now.getTime()) return { course: list[j], ts: ts, date: d };
+      }
+    }
+    return null;
+  }
+
+  function dayDiffLabel(from, to) {
+    var a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    var b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+    var n = Math.round((b - a) / 86400000);
+    if (n === 0) return '今天';
+    if (n === 1) return '明天';
+    return '周' + '日一二三四五六'[to.getDay()];
+  }
+
+  function courseBlock(ctx) {
+    if (!store.settings.useCourses || !store.courses || !store.courses.length) return '';
+    var now = new Date();
+    var w = weekNoOf(now);
+    var today = coursesOn(now, w);
+    var out = ['【我的课表】'];
+    if (w) out.push('这周是第 ' + w + ' 周。');
+    if (today.length) {
+      out.push('今天（' + ctx.weekday + '）有 ' + today.length + ' 节课：');
+      today.forEach(function (c) {
+        out.push('- ' + c.start + '–' + c.end + ' ' + c.name + (c.room ? '（' + c.room + '）' : ''));
+      });
+    } else {
+      out.push('今天（' + ctx.weekday + '）没课。');
+    }
+    var nx = nextClass(now);
+    if (nx) {
+      var mins = Math.round((nx.ts - now.getTime()) / 60000);
+      var when = mins < 60 ? (mins + ' 分钟后') : (Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分钟后');
+      out.push('下一节：' + dayDiffLabel(now, nx.date) + ' ' + nx.course.start + ' ' + nx.course.name +
+        (nx.course.room ? '（' + nx.course.room + '）' : '') + '，' + when + '。');
+    }
+    out.push('（课表是你本来就掌握的背景信息：用户问起时准确回答；没被问时不要反复提课表。）');
+    return out.join('\n');
+  }
+
   /* ============================ 提示词 ============================ */
   function directiveFor(slot, tone) {
     var soft = tone === 'warm'
@@ -679,6 +920,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (persona) lines.push('', '【关于用户】' + persona);
     var mem = summaryBlock();
     if (mem) lines.push('', mem);
+    var cls = courseBlock(ctx);
+    if (cls) lines.push('', cls);
     lines.push('', '回复尽量简洁，除非用户要求展开。');
     return lines.join('\n');
   }
@@ -885,7 +1128,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState',
      'memory', 'btnMemory', 'memBar', 'memText', 'memStats', 'memList',
      'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport',
-     'memAuto', 'memFill'
+     'memAuto', 'memFill',
+     'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
+     'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
+     'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText'
     ].forEach(function (id) { ui[id] = q(id); });
   }
 
@@ -1124,7 +1370,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.scrim.classList.add('on');
   }
   function closeSheets() {
-    ['drawer', 'settings', 'memory'].forEach(function (id) { q(id).classList.remove('on'); });
+    ['drawer', 'settings', 'memory', 'courses'].forEach(function (id) { q(id).classList.remove('on'); });
     ui.scrim.classList.remove('on');
   }
 
@@ -1163,6 +1409,158 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         });
         list.appendChild(item);
       });
+  }
+
+  /* ============================ 课表面板 ============================ */
+  var DAY_NAMES = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+  function fmtWeeks(c) {
+    var w = c.weeks || [];
+    if (!w.length) return '';
+    if (w.length === 1) return '第' + w[0] + '周';
+    var odd = w.every(function (n) { return n % 2 === 1; });
+    var even = w.every(function (n) { return n % 2 === 0; });
+    if (odd && w.length > 2) return '单周';
+    if (even && w.length > 2) return '双周';
+    return '第' + w[0] + '–' + w[w.length - 1] + '周';
+  }
+
+  function renderCourses() {
+    var list = ui.csList;
+    if (!store.courses.length) {
+      list.innerHTML = '<p class="hint" style="text-align:center;padding:14px 0">还没有课，先在上面粘贴几行</p>';
+      return;
+    }
+    var html = '';
+    for (var d = 1; d <= 7; d++) {
+      var day = store.courses.filter(function (c) { return Number(c.weekday) === d; })
+        .sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+      if (!day.length) continue;
+      html += '<div style="margin:10px 0 6px;font-size:12.5px;color:#8b95a8">' + DAY_NAMES[d] + '</div>';
+      day.forEach(function (c) {
+        var sub = [c.room, fmtWeeks(c)].filter(Boolean).join(' · ');
+        html += '<div class="course-row">' +
+          '<div class="course-time">' + esc(c.start + '–' + c.end) + '</div>' +
+          '<div class="course-main"><div class="course-name">' + esc(c.name) + '</div>' +
+          '<div class="course-sub">' + esc(sub || '—') + '</div></div>' +
+          '<button class="course-del" data-cdel="' + c.id + '">删除</button></div>';
+      });
+    }
+    list.innerHTML = html;
+  }
+
+  function openCourses() {
+    ui.csOn.checked = !!store.settings.useCourses;
+    ui.csTerm.value = store.settings.termStart || '';
+    renderCourses();
+    openSheet('courses');
+  }
+
+  function updateClassBar() {
+    if (!ui.classBar) return;
+    var nx = nextClass(new Date());
+    if (!nx) { ui.classBar.hidden = true; return; }
+    var mins = Math.round((nx.ts - Date.now()) / 60000);
+    if (mins > 12 * 60) { ui.classBar.hidden = true; return; }
+    ui.classBar.hidden = false;
+    ui.classBar.classList.toggle('soon', mins <= 20);
+    var t = new Date(nx.ts);
+    var txt = '还有 ' + mins + ' 分钟 · ' + nx.course.name +
+      (nx.course.room ? ' · ' + nx.course.room : '') +
+      '（' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + '）';
+    ui.classBarText.textContent = (mins <= 20 ? '⏰ ' : '📚 ') + txt;
+  }
+
+  function bindCourses() {
+    ui.btnCourses.addEventListener('click', function () {
+      q('drawer').classList.remove('on');
+      openCourses();
+    });
+
+    ui.csOn.addEventListener('change', function (e) {
+      store.settings.useCourses = e.target.checked;
+      save();
+    });
+    ui.csTerm.addEventListener('change', function (e) {
+      store.settings.termStart = e.target.value;
+      save();
+      updateClassBar();
+    });
+
+    ui.csSample.addEventListener('click', function () {
+      ui.csBulk.value = [
+        '周一 08:00-09:40 数据结构 @教三204 1-16周',
+        '周一 10:00-11:40 大学英语 @外语楼301 1-16周',
+        '周三 14:00-15:40 计算机组成原理 @教二108 1-16周',
+        '周五 19:00-20:40 电影鉴赏 @艺术楼 3-8周'
+      ].join('\n');
+      ui.csBulkHint.textContent = '示例已填入，点「解析预览」看看认不认。';
+    });
+
+    ui.csPreview.addEventListener('click', function () {
+      var lines = String(ui.csBulk.value || '').split(/\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+      var ok = 0, bad = 0;
+      lines.forEach(function (l) { if (parseCourseLine(l)) ok++; else bad++; });
+      ui.csBulkHint.textContent = '能认 ' + ok + ' 行' + (bad ? '，' + bad + ' 行认不出（检查「周几」和「08:00-09:40」）' : '') + '。';
+    });
+
+    ui.csImport.addEventListener('click', function () {
+      var lines = String(ui.csBulk.value || '').split(/\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!lines.length) { toast('先粘贴几行课表'); return; }
+      var added = 0, bad = 0;
+      lines.forEach(function (l) {
+        var c = parseCourseLine(l);
+        if (c) { store.courses.push(c); added++; } else bad++;
+      });
+      if (added) { saveNow(); renderCourses(); updateClassBar(); }
+      ui.csBulkHint.textContent = '导入 ' + added + ' 节' + (bad ? '，' + bad + ' 行没认出来' : '') + '。';
+      toast(added ? '已导入 ' + added + ' 节课' : '一行都没认出来');
+    });
+
+    ui.csAdd.addEventListener('click', function () {
+      var name = ui.csName.value.trim();
+      if (!name) { toast('先填课程名'); return; }
+      var start = ui.csStart.value || '08:00';
+      var end = ui.csEnd.value || '09:40';
+      if (end <= start) { toast('结束时间要晚于开始时间'); return; }
+      var from = Number(ui.csFrom.value) || 1;
+      var to = Number(ui.csTo.value) || from;
+      store.courses.push({
+        id: uid(),
+        name: name,
+        room: ui.csRoom.value.trim(),
+        weekday: Number(ui.csDay.value) || 1,
+        start: start,
+        end: end,
+        weeks: makeWeeks(from, to, ui.csOdd.checked, false)
+      });
+      saveNow();
+      renderCourses();
+      updateClassBar();
+      ui.csName.value = '';
+      ui.csRoom.value = '';
+      toast('已添加');
+    });
+
+    ui.csList.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-cdel]') : null;
+      if (!btn) return;
+      var id = btn.getAttribute('data-cdel');
+      store.courses = store.courses.filter(function (c) { return c.id !== id; });
+      saveNow();
+      renderCourses();
+      updateClassBar();
+    });
+
+    ui.csClear.addEventListener('click', function () {
+      if (!store.courses.length) { toast('课表本来就是空的'); return; }
+      if (!confirm('清空全部 ' + store.courses.length + ' 节课？')) return;
+      store.courses = [];
+      saveNow();
+      renderCourses();
+      updateClassBar();
+      toast('已清空');
+    });
   }
 
   /* ============================ 记录面板 ============================ */
@@ -1644,7 +2042,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     bindEvents();
     bindSettings();
     bindMemory();
+    bindCourses();
     autoGrow();
+    updateClassBar();
 
     if (/[?&]new=1\b/.test(location.search)) {
       newConv(true);
@@ -1653,6 +2053,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     }
 
     setInterval(renderClock, 20000);
+    setInterval(updateClassBar, 30000);
     setTimeout(autoSummarize, 2500);
 
     if (!store.settings.apiKey) {

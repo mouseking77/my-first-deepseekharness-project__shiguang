@@ -27,7 +27,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     readStream, fmtMsgTime, SLOTS, store, dateKeyOf, pad2, DAY_SLOT_KEYS: SLOTS.map(s => s.id),
     callAPI, apiUrl, apiError,
     collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel,
-    summaryBlock, dayLabelShort
+    summaryBlock, dayLabelShort,
+    parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock
   };
 })();
 `);
@@ -333,6 +334,50 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('删一天会同时删摘要', !S4.days['2026-10-02']);
   G.deleteBefore('2026-10-03');
   ok('批量删除会清掉更早的摘要', !S4.days['2026-10-01']);
+
+  console.log('\n[14] 课表解析');
+  const p1 = G.parseCourseLine('周一 08:00-09:40 数据结构 @教三204 1-16周');
+  ok('解析课程名', p1 && p1.name === '数据结构');
+  eq('解析教室', p1 && p1.room, '教三204');
+  eq('解析星期', p1 && p1.weekday, 1);
+  eq('解析时间', p1 && p1.start + '-' + p1.end, '08:00-09:40');
+  eq('周数 16 周', p1 && p1.weeks.length, 16);
+
+  const p2 = G.parseCourseLine('星期三 14:00-15:40 计算机组成原理，教二108，1-16周');
+  ok('中文逗号 + 无 @ 也能认教室', p2 && p2.name === '计算机组成原理' && p2.room === '教二108');
+
+  const p3 = G.parseCourseLine('周二 10:00-11:40 大学英语 @外语楼301 1-16周 单周');
+  ok('单周只留奇数周', p3 && p3.weeks.every((n) => n % 2 === 1));
+
+  eq('没有时间视为无效', G.parseCourseLine('随便一句话'), null);
+  eq('全角数字兼容', G.parseCourseLine('周一 ０８:００-０９:４０ 高数 @A101 1-4周').start, '08:00');
+  ok('单周但未写周次也生效', G.parseCourseLine('周一 08:00-09:40 体育 @操场 单周').weeks.indexOf(2) < 0);
+
+  console.log('\n[15] 周次与下一节课');
+  const S5 = G.store;
+  S5.settings.termStart = '2026-09-07';
+  S5.settings.useCourses = true;
+  eq('第 1 周', G.weekNoOf(new Date(2026, 8, 7, 9, 0)), 1);
+  eq('第 2 周', G.weekNoOf(new Date(2026, 8, 14, 9, 0)), 2);
+  eq('没填学期起点返回 null', (() => { S5.settings.termStart = ''; const v = G.weekNoOf(new Date(2026, 8, 7)); S5.settings.termStart = '2026-09-07'; return v; })(), null);
+
+  S5.courses = [
+    { id: 'c1', name: '数据结构', room: '教三204', weekday: 1, start: '08:00', end: '09:40', weeks: G.makeWeeks(1, 16, false, false) },
+    { id: 'c2', name: '单周课', room: 'X101', weekday: 1, start: '10:00', end: '11:40', weeks: G.makeWeeks(1, 16, true, false) }
+  ];
+  const nx = G.nextClass(new Date(2026, 8, 7, 7, 0));
+  ok('周一 07:00 找到 08:00 的课', nx && nx.course.name === '数据结构');
+  eq('下一节是 8 点', nx && new Date(nx.ts).getHours(), 8);
+  const nx2 = G.nextClass(new Date(2026, 8, 8, 7, 0));
+  ok('周二能找到下周一的课', nx2 && nx2.course.name === '数据结构');
+  ok('单周课在第 1 周出现', G.coursesOn(new Date(2026, 8, 7), 1).some((c) => c.name === '单周课'));
+  ok('单周课在第 2 周消失', !G.coursesOn(new Date(2026, 8, 14), 2).some((c) => c.name === '单周课'));
+
+  const blk = G.courseBlock({ weekday: '星期一' });
+  ok('课表块含标题', blk.indexOf('【我的课表】') >= 0);
+  ok('课表块含课程名', blk.indexOf('数据结构') >= 0);
+  const nxNow = G.nextClass(new Date());
+  ok('有下一节时课表块会提到', !nxNow || blk.indexOf('下一节') >= 0);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
