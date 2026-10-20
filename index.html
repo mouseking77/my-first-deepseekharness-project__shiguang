@@ -402,6 +402,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     </div>
 
     <div class="card">
+      <h3>对话录入</h3>
+      <p class="hint" style="margin-top:0">不想一条条填？让它问你：周几、几点、什么课、哪个教室，你回答就行。</p>
+      <button class="btn primary full" id="csChat" style="margin-top:10px">💬 开始对话录入</button>
+    </div>
+
+    <div class="card">
       <h3>批量导入</h3>
       <textarea class="ta" id="csBulk" rows="5" spellcheck="false" placeholder="每行一节课，格式：&#10;周一 08:00-09:40 数据结构 @教三204 1-16周&#10;周二 14:00-15:40 计算机组成原理 @教二108 1-16周 单周"></textarea>
       <div class="sum-actions" style="margin-top:8px">
@@ -521,7 +527,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.7 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.8 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
@@ -1090,6 +1096,32 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return lines.join('\n');
   }
 
+  function buildSchedulePrompt() {
+    var existing = store.courses.length
+      ? store.courses.map(function (c) {
+        return '- 周' + '一二三四五六日'[c.weekday - 1] + ' ' + c.start + '–' + c.end + ' ' + c.name +
+          (c.room ? '（' + c.room + '）' : '');
+      }).join('\n')
+      : '（还没有任何课程）';
+
+    return [
+      '你是课表录入助手，正在用对话帮用户把课表录进来。',
+      '',
+      '【已有课程】',
+      existing,
+      '',
+      '【怎么问】',
+      '1. 一次只问一个问题。顺序：星期几 → 上课时间 → 课程名 → 教室 → 周次（默认 1-16 周）。',
+      '2. 用户答「没有课」「跳过」「下一天」，就换下一个星期。',
+      '3. 信息齐了，立刻输出操作标签，然后在同一句里问下一节。',
+      '4. 每次回复不超过两行，不要解释规则，不要客套，不要重复用户说过的话。',
+      '5. 用户一口气说多节课时，分别输出多个标签，不要遗漏。',
+      '6. 用户说「好了」「结束」时，用一句话总结录了几节课，不要输出标签。',
+      '',
+      COURSE_OP_RULES
+    ].join('\n');
+  }
+
   /* ============================ 接口 ============================ */
   function apiUrl() {
     var base = (store.settings.proxyUrl || '').trim() || 'https://api.deepseek.com';
@@ -1295,7 +1327,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'memAuto', 'memFill',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
-     'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText'
+     'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
     ].forEach(function (id) { ui[id] = q(id); });
   }
 
@@ -1310,6 +1342,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function renderHeader() {
     var c = getActiveConv();
     ui.convTitle.textContent = c.title || '新对话';
+    ui.input.placeholder = c.mode === 'schedule' ? '直接回答它的问题…' : '和小深说点什么…';
   }
 
   function messageHtml(m) {
@@ -1456,7 +1489,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var gap = gapText(prevTs, ctx.ts);
     var slot = activeSlot(ctx.minutes);
     var allowed = hintAllowed(slot, ctx.ts);
-    var system = buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gap);
+    var system = conv.mode === 'schedule'
+      ? buildSchedulePrompt()
+      : buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gap);
 
     var history = conv.messages
       .filter(function (m) { return !m.error && m.content; })
@@ -1732,6 +1767,24 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       saveNow();
       renderCourses();
       updateClassBar();
+    });
+
+    ui.csChat.addEventListener('click', function () {
+      var c = newConv(true);
+      c.mode = 'schedule';
+      c.title = '录入课表';
+      c.updatedAt = Date.now();
+      c.messages.push({
+        id: uid(),
+        role: 'assistant',
+        content: '咱们一节一节来。先从周一开始——周一有课吗？几点、什么课？',
+        ts: Date.now()
+      });
+      saveNow();
+      closeSheets();
+      renderHeader();
+      renderMessages(true);
+      setTimeout(function () { try { ui.input.focus(); } catch (e) { /* 忽略 */ } }, 320);
     });
 
     ui.csClear.addEventListener('click', function () {

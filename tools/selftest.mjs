@@ -29,7 +29,7 @@ code = code.replace(/\}\)\(\);\s*$/, `
     collectDays, countInDay, deleteDay, deleteBefore, bytesUsed, dayLabel,
     summaryBlock, dayLabelShort,
     parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock,
-    extractOps, applyScheduleOps, parseWeeksSpec, toWeekday
+    extractOps, applyScheduleOps, parseWeeksSpec, toWeekday, buildSchedulePrompt
   };
 })();
 `);
@@ -418,6 +418,17 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('周次解析：单周', G.parseWeeksSpec('单周').indexOf(2), -1);
   eq('周次解析：1-4', G.parseWeeksSpec('1-4').join(','), '1,2,3,4');
   eq('星期解析：周三', G.toWeekday('周三'), 3);
+
+  console.log('\n[17] 对话录入课表');
+  S6.courses = [
+    { id: 'x', name: '高数', room: '教一101', weekday: 2, start: '10:00', end: '11:40', weeks: G.makeWeeks(1, 16, false, false) }
+  ];
+  const sp = G.buildSchedulePrompt();
+  ok('含已有课程', sp.indexOf('高数') >= 0);
+  ok('含提问顺序', sp.indexOf('【怎么问】') >= 0);
+  ok('含操作协议', sp.indexOf('<op>') >= 0);
+  ok('要求一次只问一个', sp.indexOf('一次只问一个问题') >= 0);
+  ok('要求限制长度', sp.indexOf('不超过两行') >= 0);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
