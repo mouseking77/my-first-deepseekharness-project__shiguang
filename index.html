@@ -153,6 +153,19 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
   font-size:12.5px;color:#7c879c;background:#141b27;border:1px dashed #2a3448;
   border-radius:10px;padding:8px 10px;margin-bottom:6px;
 }
+.pick-menu{
+  position:fixed;left:12px;z-index:7;
+  background:#1b2333;border:1px solid #2a3448;border-radius:12px;
+  box-shadow:0 10px 28px rgba(0,0,0,.5);overflow:hidden;
+  display:flex;flex-direction:column;min-width:150px;
+}
+.pick-menu[hidden]{display:none}
+.pick-menu button{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 16px;font-size:14.5px;color:#dfe5ef;text-align:left;
+}
+.pick-menu button + button{border-top:1px solid #242c3c}
+.pick-menu button:active{background:#232d40}
 .composer .box{
   flex:1;display:flex;align-items:flex-end;gap:6px;
   background:#151b26;border:1px solid #242c3c;border-radius:22px;
@@ -358,6 +371,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     </div>
   </div>
   <input type="file" id="fileImg" accept="image/*" hidden>
+  <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+</div>
+
+<div class="pick-menu" id="pickMenu" hidden>
+  <button id="pickCam">📷 拍照</button>
+  <button id="pickGal">🖼 从相册选</button>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -568,7 +587,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.12 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.13 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -1596,6 +1615,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function cacheUi() {
     ['btnMenu', 'btnSettings', 'btnSend', 'input', 'msgWrap', 'convTitle', 'clockText',
      'btnImg', 'fileImg', 'imgPreview', 'imgPreviewImg', 'imgRemove',
+     'fileCam', 'pickMenu', 'pickCam', 'pickGal',
      'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
      'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
      'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona',
@@ -1775,6 +1795,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     }
     text = text || '看看这张图';
     ui.input.value = '';
+    if (ui.pickMenu) ui.pickMenu.hidden = true;
     autoGrow();
     updateSendBtn();
 
@@ -2584,11 +2605,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.btnSend.addEventListener('click', function () { if (busy) stop(); else send(); });
 
-    ui.btnImg.addEventListener('click', function () { try { ui.fileImg.click(); } catch (e) { toast('这个浏览器不支持选图'); } });
-
-    ui.fileImg.addEventListener('change', function (e) {
+    function onFilePicked(e) {
       var f = e.target.files && e.target.files[0];
-      try { ui.fileImg.value = ''; } catch (err) { /* 忽略 */ }
+      try { e.target.value = ''; } catch (err) { /* 忽略 */ }
       if (!f) return;
       if (f.type && f.type.indexOf('image/') !== 0) { toast('只能选图片'); return; }
       toast('正在处理图片…');
@@ -2602,6 +2621,35 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       }).catch(function () {
         toast('这张图读不出来，换一张试试');
       });
+    }
+
+    ui.fileImg.addEventListener('change', onFilePicked);
+    ui.fileCam.addEventListener('change', onFilePicked);
+
+    function hidePickMenu() { ui.pickMenu.hidden = true; }
+
+    ui.btnImg.addEventListener('click', function () {
+      if (!ui.pickMenu.hidden) { hidePickMenu(); return; }
+      var comp = document.querySelector('.composer');
+      var h = comp ? comp.offsetHeight : 72;
+      ui.pickMenu.style.bottom = (h + 8) + 'px';
+      ui.pickMenu.hidden = false;
+    });
+
+    ui.pickCam.addEventListener('click', function () {
+      hidePickMenu();
+      try { ui.fileCam.click(); } catch (e) { toast('这个浏览器打不开相机'); }
+    });
+
+    ui.pickGal.addEventListener('click', function () {
+      hidePickMenu();
+      try { ui.fileImg.click(); } catch (e) { toast('这个浏览器不支持选图'); }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (ui.pickMenu.hidden) return;
+      if (ui.pickMenu.contains(e.target) || ui.btnImg.contains(e.target)) return;
+      hidePickMenu();
     });
 
     ui.imgRemove.addEventListener('click', clearPendingImg);
