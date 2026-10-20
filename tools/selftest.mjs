@@ -429,6 +429,8 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('含操作协议', sp.indexOf('<op>') >= 0);
   ok('要求一次只问一个', sp.indexOf('一次只问一个问题') >= 0);
   ok('要求限制长度', sp.indexOf('不超过两行') >= 0);
+  ok('录入模式也带当前时间', sp.indexOf('【现在】') >= 0);
+  ok('录入模式带星期', /星期[一二三四五六日]/.test(sp));
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

@@ -527,7 +527,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.8 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.9 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">所有聊天记录只存在这台手机上（浏览器本地存储），不上传。换手机 / 清浏览器数据会丢。</p>
@@ -1097,6 +1097,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   function buildSchedulePrompt() {
+    var ctx = nowContext();
     var existing = store.courses.length
       ? store.courses.map(function (c) {
         return '- 周' + '一二三四五六日'[c.weekday - 1] + ' ' + c.start + '–' + c.end + ' ' + c.name +
@@ -1106,6 +1107,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     return [
       '你是课表录入助手，正在用对话帮用户把课表录进来。',
+      '',
+      '【现在】' + ctx.full + '，' + ctx.weekday + '，' + ctx.period + '。',
+      '（用户问「今天几号/星期几/明天」时，以上面这个时间为准，直接准确回答。）',
       '',
       '【已有课程】',
       existing,
@@ -1681,9 +1685,16 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.classBar.hidden = false;
     ui.classBar.classList.toggle('soon', mins <= 20);
     var t = new Date(nx.ts);
-    var txt = '还有 ' + mins + ' 分钟 · ' + nx.course.name +
-      (nx.course.room ? ' · ' + nx.course.room : '') +
-      '（' + pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + '）';
+    var diff = dayDiffLabel(new Date(), nx.date);
+    var head;
+    if (diff === '今天') {
+      head = mins <= 60
+        ? ('还有 ' + mins + ' 分钟')
+        : ('还有 ' + Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分');
+    } else {
+      head = diff + ' ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes());
+    }
+    var txt = head + ' · ' + nx.course.name + (nx.course.room ? ' · ' + nx.course.room : '');
     ui.classBarText.textContent = (mins <= 20 ? '⏰ ' : '📚 ') + txt;
     layout();
   }
