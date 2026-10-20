@@ -95,7 +95,7 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
 .typing i:nth-child(3){animation-delay:.36s}
 @keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
-.empty{max-width:520px;margin:6dvh auto 0;text-align:center;color:#8b95a8}
+.empty{max-width:520px;margin:6vh auto 0;margin:6dvh auto 0;text-align:center;color:#8b95a8}
 .empty .logo{
   width:66px;height:66px;margin:0 auto 14px;border-radius:20px;
   display:grid;place-items:center;font-size:30px;
@@ -552,16 +552,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   // 用 JS 量出真实可视高度，绕开 vh/dvh 在手机上的各种坑
   function setAppHeight() {
-    var vv = window.visualViewport;
-    var h = Math.round((vv && vv.height) || window.innerHeight || document.documentElement.clientHeight || 0);
-    if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+    try {
+      var vv = window.visualViewport;
+      var h = Math.round((vv && vv.height) || window.innerHeight || document.documentElement.clientHeight || 0);
+      if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+    } catch (e) { /* 老浏览器忽略 */ }
   }
   setAppHeight();
-  window.addEventListener('resize', setAppHeight);
-  window.addEventListener('orientationchange', function () { setTimeout(setAppHeight, 120); });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', setAppHeight);
-  }
+  try {
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', function () { setTimeout(setAppHeight, 120); });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+  } catch (e) { /* 忽略 */ }
 
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
