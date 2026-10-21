@@ -166,6 +166,30 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
 }
 .pick-menu button + button{border-top:1px solid #242c3c}
 .pick-menu button:active{background:#232d40}
+
+/* 页内相机 */
+.cam{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column}
+.cam[hidden]{display:none}
+.cam-top{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 8px;flex:0 0 auto;
+}
+.cam-top button{
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,.14);color:#fff;font-size:16px;
+  display:grid;place-items:center;
+}
+.cam-stage{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden}
+.cam-stage video{width:100%;height:100%;object-fit:contain;background:#000}
+.cam-bottom{
+  flex:0 0 auto;display:grid;place-items:center;
+  padding:14px 0 calc(26px + env(safe-area-inset-bottom));
+}
+.cam-shoot{
+  width:70px;height:70px;border-radius:50%;
+  background:#fff;border:4px solid rgba(255,255,255,.35);
+}
+.cam-shoot:active{transform:scale(.94)}
 .composer .box{
   flex:1;display:flex;align-items:flex-end;gap:6px;
   background:#151b26;border:1px solid #242c3c;border-radius:22px;
@@ -379,6 +403,19 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   <button id="pickGal">🖼 从相册选</button>
 </div>
 
+<div class="cam" id="camera" hidden>
+  <div class="cam-top">
+    <button id="camClose" aria-label="关闭相机">✕</button>
+    <button id="camSwitch" aria-label="切换摄像头">🔄</button>
+  </div>
+  <div class="cam-stage">
+    <video id="camVideo" playsinline autoplay muted></video>
+  </div>
+  <div class="cam-bottom">
+    <button id="camShoot" class="cam-shoot" aria-label="拍照"></button>
+  </div>
+</div>
+
 <div class="scrim" id="scrim"></div>
 
 <!-- 对话列表 -->
@@ -587,7 +624,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.13 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.14 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -1418,6 +1455,75 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     layout();
   }
 
+  /* ---------- 页内相机（绕开不支持的 capture 属性） ---------- */
+  var camStream = null;
+  var camFacing = 'environment';
+
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast('这个浏览器不支持页内相机，请用相机拍好后从相册选');
+      closeCamera();
+      return;
+    }
+    stopCamera();
+    var constraints = {
+      audio: false,
+      video: { facingMode: camFacing, width: { ideal: 1920 }, height: { ideal: 1920 } }
+    };
+    navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+      camStream = stream;
+      ui.camVideo.srcObject = stream;
+      var p = ui.camVideo.play();
+      if (p && p.catch) p.catch(function () { /* 自动播放被拒，用户点一下就好 */ });
+    }).catch(function (err) {
+      var name = err && err.name;
+      var msg = name === 'NotAllowedError' ? '没给相机权限，请在浏览器设置里允许'
+        : (name === 'NotFoundError' ? '没找到摄像头' : '打不开相机，请用相册');
+      toast(msg);
+      closeCamera();
+    });
+  }
+
+  function stopCamera() {
+    if (camStream) {
+      try { camStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* 忽略 */ }
+      camStream = null;
+    }
+    if (ui.camVideo) ui.camVideo.srcObject = null;
+  }
+
+  function openCamera() {
+    if (ui.camera) ui.camera.hidden = false;
+    startCamera();
+  }
+
+  function closeCamera() {
+    stopCamera();
+    if (ui.camera) ui.camera.hidden = true;
+  }
+
+  function shootPhoto() {
+    var v = ui.camVideo;
+    if (!v || !v.videoWidth || !v.videoHeight) { toast('相机还没准备好，等一下再按'); return; }
+    var size = imgTargetSize(v.videoWidth, v.videoHeight, IMG_MAX_SIDE);
+    var cv = document.createElement('canvas');
+    cv.width = size.w;
+    cv.height = size.h;
+    cv.getContext('2d').drawImage(v, 0, 0, size.w, size.h);
+    var dataUrl = cv.toDataURL('image/jpeg', IMG_QUALITY);
+    pendingImg = { dataUrl: dataUrl, w: size.w, h: size.h };
+    ui.imgPreviewImg.src = dataUrl;
+    ui.imgPreview.hidden = false;
+    closeCamera();
+    layout();
+    updateSendBtn();
+  }
+
+  function switchCamera() {
+    camFacing = camFacing === 'environment' ? 'user' : 'environment';
+    startCamera();
+  }
+
   /* ============================ 接口 ============================ */
   function apiUrl() {
     var base = (store.settings.proxyUrl || '').trim() || 'https://api.deepseek.com';
@@ -1616,6 +1722,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ['btnMenu', 'btnSettings', 'btnSend', 'input', 'msgWrap', 'convTitle', 'clockText',
      'btnImg', 'fileImg', 'imgPreview', 'imgPreviewImg', 'imgRemove',
      'fileCam', 'pickMenu', 'pickCam', 'pickGal',
+     'camera', 'camVideo', 'camClose', 'camSwitch', 'camShoot',
      'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
      'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
      'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona',
@@ -2638,13 +2745,17 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.pickCam.addEventListener('click', function () {
       hidePickMenu();
-      try { ui.fileCam.click(); } catch (e) { toast('这个浏览器打不开相机'); }
+      openCamera();
     });
 
     ui.pickGal.addEventListener('click', function () {
       hidePickMenu();
       try { ui.fileImg.click(); } catch (e) { toast('这个浏览器不支持选图'); }
     });
+
+    ui.camClose.addEventListener('click', closeCamera);
+    ui.camShoot.addEventListener('click', shootPhoto);
+    ui.camSwitch.addEventListener('click', switchCamera);
 
     document.addEventListener('click', function (e) {
       if (ui.pickMenu.hidden) return;
@@ -2716,6 +2827,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         pruneImages();
         renderClock();
         updateClassBar();
+      } else {
+        closeCamera();
       }
     });
 
