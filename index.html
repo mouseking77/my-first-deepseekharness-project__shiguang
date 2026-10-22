@@ -1586,7 +1586,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var day = dateKeyOf(new Date());
     var rec = store.usage[day] || (store.usage[day] = { input: 0, output: 0, cacheHit: 0, calls: 0, est: 0 });
     var tin = 0, tout = 0, hit = 0;
-    if (u && u.total_tokens) {
+    if (u && (u.total_tokens || u.prompt_tokens || u.completion_tokens)) {
       tin = u.prompt_tokens || 0;
       tout = u.completion_tokens || 0;
       hit = u.prompt_cache_hit_tokens || 0;

@@ -494,6 +494,49 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('问候提示词含间隔', gp.indexOf('3 小时前') >= 0);
   ok('问候提示词限定一句', gp.indexOf('只说一句') >= 0);
 
+  console.log('\n[20] 用量累加（打桩接口）');
+  const S7 = G.store;
+  S7.usage = {};
+  const todayKey = G.dateKeyOf(new Date());
+
+  sandbox.fetch = async () => new Response(JSON.stringify({
+    choices: [{ message: { content: '好' } }],
+    usage: { prompt_tokens: 1000, completion_tokens: 200, prompt_cache_hit_tokens: 600, total_tokens: 1200 }
+  }), { status: 200, headers: { 'content-type': 'application/json' } });
+
+  await G.callAPI([{ role: 'user', content: '测试' }], { stream: false });
+  const rec1 = S7.usage[todayKey];
+  ok('记录了今日用量', !!rec1);
+  eq('输入 token 累加', rec1.input, 1000);
+  eq('输出 token 累加', rec1.output, 200);
+  eq('缓存命中记录', rec1.cacheHit, 600);
+  eq('请求次数', rec1.calls, 1);
+  eq('有 usage 时不走估算', rec1.est, 0);
+  ok('算出的费用大于 0', G.costOf(rec1, S7.settings) > 0);
+
+  sandbox.fetch = async () => new Response(new ReadableStream({
+    start(c) {
+      const enc = new TextEncoder();
+      c.enqueue(enc.encode('data: {"choices":[{"delta":{"content":"嗨"}}]}\n\n'));
+      c.enqueue(enc.encode('data: {"choices":[],"usage":{"prompt_tokens":500,"completion_tokens":50,"prompt_cache_hit_tokens":400}}\n\n'));
+      c.enqueue(enc.encode('data: [DONE]\n\n'));
+      c.close();
+    }
+  }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+
+  await G.callAPI([{ role: 'user', content: '流式' }], { stream: true });
+  const rec2 = S7.usage[todayKey];
+  eq('流式累加输入', rec2.input, 1500);
+  eq('流式累加输出', rec2.output, 250);
+  eq('两次请求合并', rec2.calls, 2);
+
+  sandbox.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: '好的' } }] }), { status: 200 });
+  const beforeEst = rec2.input;
+  await G.callAPI([{ role: 'user', content: '一二三四五六七八九十' }], { stream: false });
+  const rec3 = S7.usage[todayKey];
+  ok('无 usage 时标记为估算', rec3.est >= 1);
+  ok('估算也计入输入', rec3.input > beforeEst);
+
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
 }).catch((e) => { console.error(e); process.exit(1); });
