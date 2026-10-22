@@ -30,7 +30,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     summaryBlock, dayLabelShort,
     parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock,
     extractOps, applyScheduleOps, parseWeeksSpec, toWeekday, buildSchedulePrompt,
-    imgTargetSize, composePayload, pickImagesToDrop
+    imgTargetSize, composePayload, pickImagesToDrop,
+    greetDecision, costOf, fmtNum, buildGreetPrompt
   };
 })();
 `);
@@ -468,6 +469,30 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('删的是昨天那张', drop[0].id, 'x');
   const drop2 = G.pickImagesToDrop(recs, '2026-10-20', 1);
   ok('超上限的也删', drop2.length === 2 && drop2.some((r) => r.id === 'z'));
+
+  console.log('\n[19] 打开问候与用量费用');
+  const s19 = { greetEnabled: true, apiKey: 'sk-x', greetMinGap: 30, greetMaxPerDay: 3 };
+  const now19 = new Date(2026, 9, 21, 12, 0).getTime();
+  ok('间隔不足不触发', !G.greetDecision({ lastSeen: now19 - 10 * 60000, greetDay: '2026-10-21', greetCount: 0 }, now19, s19));
+  ok('间隔足够要触发', G.greetDecision({ lastSeen: now19 - 40 * 60000, greetDay: '2026-10-21', greetCount: 0 }, now19, s19));
+  ok('关掉开关不触发', !G.greetDecision({ lastSeen: now19 - 40 * 60000, greetDay: '2026-10-21', greetCount: 0 }, now19, Object.assign({}, s19, { greetEnabled: false })));
+  ok('没有 Key 不触发', !G.greetDecision({ lastSeen: now19 - 40 * 60000, greetDay: '2026-10-21', greetCount: 0 }, now19, Object.assign({}, s19, { apiKey: '' })));
+  ok('超过每日次数不触发', !G.greetDecision({ lastSeen: now19 - 40 * 60000, greetDay: '2026-10-21', greetCount: 3 }, now19, s19));
+  ok('换天后重新计数', G.greetDecision({ lastSeen: now19 - 40 * 60000, greetDay: '2026-10-20', greetCount: 3 }, now19, s19));
+
+  const price = { priceIn: 0.3, priceOut: 1.2, usdToCny: 7.2 };
+  const c1 = G.costOf({ input: 1000000, output: 0, cacheHit: 0 }, price);
+  ok('100 万输入 ≈ 2.16 元', Math.abs(c1 - 2.16) < 0.01);
+  const c2 = G.costOf({ input: 1000000, output: 0, cacheHit: 1000000 }, price);
+  ok('全部命中缓存时便宜 50 倍', Math.abs(c2 - 0.0432) < 0.01);
+  const c3 = G.costOf({ input: 0, output: 1000000, cacheHit: 0 }, price);
+  ok('输出单独计价', Math.abs(c3 - 8.64) < 0.01);
+  eq('千分位格式', G.fmtNum(1234567), '1,234,567');
+
+  const gp = G.buildGreetPrompt({ full: '2026年10月21日 12:40', weekday: '星期三', period: '中午', clock: '12:40', minutes: 760, ts: now19, dayKey: '2026-10-21' }, '3 小时前');
+  ok('问候提示词含时间', gp.indexOf('12:40') >= 0);
+  ok('问候提示词含间隔', gp.indexOf('3 小时前') >= 0);
+  ok('问候提示词限定一句', gp.indexOf('只说一句') >= 0);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
