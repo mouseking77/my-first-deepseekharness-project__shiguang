@@ -45,6 +45,21 @@ header{
 .time-chip .dot{width:5px;height:5px;border-radius:50%;background:#4a5468}
 .time-chip.hint-on .dot{background:#3ddc97;box-shadow:0 0 8px rgba(61,220,151,.7)}
 .time-chip #moodText{color:#6f7c93}
+.time-chip .bal{
+  margin-left:2px;padding-left:8px;border-left:1px solid #2a3448;
+  color:#7fe0b0;font-variant-numeric:tabular-nums;
+}
+.time-chip .bal[hidden]{display:none}
+
+/* 余额面板 */
+.wallet-big{font-size:30px;font-weight:600;letter-spacing:.5px;color:#e8ecf4;font-variant-numeric:tabular-nums}
+.wallet-sub{font-size:13px;color:#8b95a8;margin-top:4px}
+.wallet-day{
+  display:flex;justify-content:space-between;gap:10px;
+  font-size:13px;padding:7px 0;border-bottom:1px dashed #1c2432;color:#c3cddd;
+}
+.wallet-day:last-child{border-bottom:0}
+.wallet-day span:last-child{color:#8b95a8;font-variant-numeric:tabular-nums}
 
 /* ---------- messages ---------- */
 main{
@@ -306,7 +321,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 .day-msg span{color:#5f6b80;font-size:11px;margin-left:6px}
 .oplog{margin-top:8px;padding:8px 10px;border-radius:8px;background:#12261c;border:1px solid #1f4433;color:#7fe0b0;font-size:12.5px;line-height:1.6}
 .oplog b{color:#a9f0cd;font-weight:600}
-.sheet-foot{padding:0 16px 16px;flex:0 0 auto}
+.sheet-foot{
+  padding:10px 16px 16px;flex:0 0 auto;
+  position:sticky;bottom:0;background:#11161f;z-index:2;
+  box-shadow:0 -10px 18px rgba(0,0,0,.35);
+}
 .day-sum{padding:0 12px 10px}
 .sum-text{
   font-size:13px;line-height:1.65;color:#c8d2e2;
@@ -373,6 +392,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     <div class="conv-title" id="convTitle">新对话</div>
     <button class="time-chip" id="timeChip" title="时间感知状态">
       <span id="clockText">--:--</span><span class="dot"></span><span id="moodText"></span>
+      <span class="bal" id="balanceChip" hidden></span>
     </button>
   </div>
   <button class="icon-btn" id="btnSettings" aria-label="设置">⚙</button>
@@ -427,8 +447,34 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   </div>
   <div class="sheet-body" id="convList"></div>
   <div class="sheet-foot">
-    <button class="btn full" id="btnCourses">📚 我的课表</button>
+    <button class="btn full" id="btnWallet">💰 余额与用量</button>
+    <button class="btn full" id="btnCourses" style="margin-top:8px">📚 我的课表</button>
     <button class="btn full" id="btnMemory" style="margin-top:8px">📅 按天查看 · 清理记录</button>
+  </div>
+</div>
+
+<!-- 余额与用量 -->
+<div class="sheet" id="wallet">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2>余额与用量</h2>
+    <button class="btn" data-close>完成</button>
+  </div>
+  <div class="sheet-body">
+
+    <div class="card">
+      <div class="wallet-big" id="walletTotal">—</div>
+      <div class="wallet-sub" id="walletSpent">点下面「刷新余额」</div>
+      <button class="btn full" id="walletRefresh" style="margin-top:12px">刷新余额</button>
+      <p class="hint" id="walletHint">余额来自 DeepSeek 的 /user/balance 接口；今日已花 = 今天第一次查询的余额 − 现在余额（充值会自动重置基线）。</p>
+    </div>
+
+    <div class="card">
+      <h3>近 7 天</h3>
+      <div id="walletDays"></div>
+      <p class="hint">按 token 估算，金额仅供参考；余额那条才是真实扣费。</p>
+    </div>
+
   </div>
 </div>
 
@@ -657,7 +703,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.16 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.17 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -1710,6 +1756,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       store.balance.currency = r.currency;
       saveNow();
       if (ui.memory && ui.memory.classList.contains('on')) renderMemory();
+      renderWallet();
+      renderClock();
       if (!silent) toast('余额已更新');
       return r;
     }).catch(function (err) {
@@ -1982,6 +2030,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'memAuto', 'memFill', 'memUsage',
      'setGreet', 'setGreetGap', 'setGreetMax', 'setGreetUnlimited', 'setPriceIn', 'setPriceOut', 'setRate',
      'memBalanceBtn',
+     'wallet', 'btnWallet', 'walletTotal', 'walletSpent', 'walletDays', 'walletRefresh', 'balanceChip',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
      'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
@@ -1994,6 +2043,42 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.moodText.textContent = c.period;
     ui.timeChip.classList.toggle('hint-on',
       !!store.settings.reminders.enabled && store.settings.reminders.tone !== 'quiet');
+    if (ui.balanceChip) {
+      var b = store.balance;
+      if (b) {
+        ui.balanceChip.hidden = false;
+        ui.balanceChip.textContent = money(b.last, b.currency);
+      } else {
+        ui.balanceChip.hidden = true;
+      }
+    }
+  }
+
+  function renderWallet() {
+    var b = store.balance;
+    var cur = (b && b.currency) || 'CNY';
+    if (ui.walletTotal) ui.walletTotal.textContent = b ? money(b.last, cur) : '—';
+    if (ui.walletSpent) {
+      ui.walletSpent.textContent = b ? ('今日已花 ' + money(balanceSpent(b.last), cur)) : '点下面「刷新余额」';
+    }
+    if (!ui.walletDays) return;
+    var rows = [];
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      var k = dateKeyOf(d);
+      var rec = store.usage[k];
+      var label = (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + '日一二三四五六'[d.getDay()];
+      rows.push('<div class="wallet-day"><span>' + label + '</span><span>' +
+        (rec ? (fmtNum(rec.input + rec.output) + ' token · ≈ ' + money(costOf(rec, store.settings), cur)) : '无记录') +
+        '</span></div>');
+    }
+    ui.walletDays.innerHTML = rows.join('');
+  }
+
+  function openWallet() {
+    renderWallet();
+    openSheet('wallet');
   }
 
   function renderHeader() {
@@ -2279,7 +2364,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.scrim.classList.add('on');
   }
   function closeSheets() {
-    ['drawer', 'settings', 'memory', 'courses'].forEach(function (id) { q(id).classList.remove('on'); });
+    ['drawer', 'settings', 'memory', 'courses', 'wallet'].forEach(function (id) { q(id).classList.remove('on'); });
     ui.scrim.classList.remove('on');
   }
 
@@ -2820,6 +2905,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.btnExport.addEventListener('click', exportBackup);
 
     ui.memBalanceBtn.addEventListener('click', function () { refreshBalance(false); });
+
+    ui.btnWallet.addEventListener('click', function () {
+      q('drawer').classList.remove('on');
+      openWallet();
+    });
+
+    ui.walletRefresh.addEventListener('click', function () { refreshBalance(false); });
 
     ui.memAuto.addEventListener('change', function (e) {
       store.settings.autoSummary = e.target.checked;
