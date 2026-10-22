@@ -31,7 +31,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     parseCourseLine, makeWeeks, fmtWeeks, weekNoOf, coursesOn, nextClass, courseBlock,
     extractOps, applyScheduleOps, parseWeeksSpec, toWeekday, buildSchedulePrompt,
     imgTargetSize, composePayload, pickImagesToDrop,
-    greetDecision, costOf, fmtNum, buildGreetPrompt
+    greetDecision, costOf, fmtNum, buildGreetPrompt,
+    balanceSpent, updateBalanceState, money
   };
 })();
 `);
@@ -536,6 +537,22 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   const rec3 = S7.usage[todayKey];
   ok('无 usage 时标记为估算', rec3.est >= 1);
   ok('估算也计入输入', rec3.input > beforeEst);
+
+  console.log('\n[21] 余额与真实花费');
+  const S8 = G.store;
+  const dk = G.dateKeyOf(new Date());
+  S8.balance = { day: dk, start: 12.34, last: 12.34, currency: 'CNY' };
+  eq('刚记录时没花钱', G.balanceSpent(12.34), 0);
+  eq('余额下降 0.04', Math.round(G.balanceSpent(12.30) * 100), 4);
+  eq('充值后花费归零', G.updateBalanceState(22.30), 0);
+  eq('充值后 last 更新', S8.balance.last, 22.3);
+  eq('充值后基线重置', S8.balance.start, 22.3);
+  eq('CNY 格式', G.money(12.3, 'CNY'), '¥12.30');
+  eq('USD 格式', G.money(1.5, 'USD'), '$1.50');
+
+  const s21 = { greetEnabled: true, apiKey: 'k', greetMinGap: 60, greetMaxPerDay: 0 };
+  ok('次数 0 = 不限', G.greetDecision({ lastSeen: now19 - 600 * 60000, greetDay: '2026-10-21', greetCount: 99 }, now19, s21));
+  ok('不限也要满足间隔', !G.greetDecision({ lastSeen: now19 - 10 * 60000, greetDay: '2026-10-21', greetCount: 0 }, now19, s21));
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

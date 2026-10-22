@@ -460,6 +460,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       <input class="mem-search" id="memSearch" placeholder="搜索关键词（可选）" autocomplete="off">
       <div class="mem-stats" id="memStats"></div>
       <div class="mem-stats" id="memUsage" style="color:#7fe0b0"></div>
+      <button class="btn full" id="memBalanceBtn" style="margin-top:8px">刷新余额</button>
       <button class="btn full" id="memReset" style="margin-top:10px">清除筛选</button>
     </div>
 
@@ -630,21 +631,16 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <input type="checkbox" id="setGreet">
       </div>
       <label class="field" style="margin-top:6px">
-        <span>最短间隔</span>
-        <select id="setGreetGap">
-          <option value="5">5 分钟</option>
-          <option value="30">30 分钟</option>
-          <option value="120">2 小时</option>
-          <option value="480">8 小时</option>
-        </select>
+        <span>最短间隔（分钟）</span>
+        <input type="number" id="setGreetGap" min="1" step="1" inputmode="numeric" placeholder="30">
       </label>
+      <div class="switch-row">
+        <span>不限次数</span>
+        <input type="checkbox" id="setGreetUnlimited">
+      </div>
       <label class="field">
         <span>每天最多几次</span>
-        <select id="setGreetMax">
-          <option value="1">1 次</option>
-          <option value="3">3 次</option>
-          <option value="5">5 次</option>
-        </select>
+        <input type="number" id="setGreetMax" min="1" step="1" inputmode="numeric" placeholder="3">
       </label>
       <p class="hint">它只拿「现在几点、距上次多久、今天课表、最近摘要」当依据，怎么说由它自己决定。</p>
     </section>
@@ -661,7 +657,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.15 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.16 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -773,6 +769,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     s.hints = s.hints && typeof s.hints === 'object' ? s.hints : {};
     s.days = s.days && typeof s.days === 'object' ? s.days : {};
     s.usage = s.usage && typeof s.usage === 'object' ? s.usage : {};
+    s.balance = s.balance && typeof s.balance === 'object' ? s.balance : null;
     s.greet = s.greet && typeof s.greet === 'object' ? s.greet : { day: '', count: 0 };
     s.courses = Array.isArray(s.courses) ? s.courses : [];
     s.courses.forEach(function (c) { if (!c.id) c.id = uid(); if (!Array.isArray(c.weeks)) c.weeks = []; });
@@ -823,6 +820,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         days: store.days,
         courses: store.courses,
         usage: store.usage,
+        balance: store.balance,
         greet: store.greet,
         lastHintTs: store.lastHintTs,
         lastSeen: store.lastSeen
@@ -1658,7 +1656,71 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (gapMin < Number(s.greetMinGap || 30)) return false;
     var day = dateKeyOf(new Date(now));
     var count = st.greetDay === day ? (st.greetCount || 0) : 0;
-    return count < Number(s.greetMaxPerDay || 3);
+    var max = Number(s.greetMaxPerDay);
+    if (max > 0 && count >= max) return false;
+    return true;
+  }
+
+  /* ---------- 余额与花费 ---------- */
+  function apiBase() {
+    var base = (store.settings.proxyUrl || '').trim() || 'https://api.deepseek.com';
+    return base.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  }
+
+  function balanceSpent(cur) {
+    var b = store.balance;
+    if (!b) return 0;
+    return Math.max(0, b.start - cur);
+  }
+
+  // 记录余额基线；余额突然变多说明充值了，重置基线
+  function updateBalanceState(cur) {
+    var day = dateKeyOf(new Date());
+    var b = store.balance;
+    if (!b || b.day !== day) {
+      store.balance = { day: day, start: cur, last: cur, currency: (b && b.currency) || 'CNY' };
+    } else if (cur > b.last + 0.0001) {
+      store.balance.start = cur;
+    }
+    store.balance.last = cur;
+    save();
+    return balanceSpent(cur);
+  }
+
+  function fetchBalance() {
+    var key = (store.settings.apiKey || '').trim();
+    if (!key) return Promise.reject(apiError('no_key'));
+    return fetch(apiBase() + '/user/balance', { headers: { Authorization: 'Bearer ' + key } })
+      .catch(function (err) { throw apiError('network', { cause: err }); })
+      .then(function (res) {
+        if (!res.ok) throw apiError('http', { status: res.status, detail: '余额接口' });
+        return res.json();
+      })
+      .then(function (j) {
+        var infos = j.balance_infos || [];
+        var info = infos.filter(function (x) { return x.currency === 'CNY'; })[0] || infos[0];
+        if (!info) throw apiError('http', { status: 200, detail: '没有余额信息' });
+        return { currency: info.currency || 'CNY', total: Number(info.total_balance) || 0 };
+      });
+  }
+
+  function refreshBalance(silent) {
+    return fetchBalance().then(function (r) {
+      updateBalanceState(r.total);
+      store.balance.currency = r.currency;
+      saveNow();
+      if (ui.memory && ui.memory.classList.contains('on')) renderMemory();
+      if (!silent) toast('余额已更新');
+      return r;
+    }).catch(function (err) {
+      if (!silent) toast('查不到余额：' + explainError(err));
+      return null;
+    });
+  }
+
+  function money(n, cur) {
+    var sym = (cur === 'USD') ? '$' : '¥';
+    return sym + (Math.round(n * 100) / 100).toFixed(2);
   }
 
   function runGreeting() {
@@ -1918,7 +1980,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'memory', 'btnMemory', 'memBar', 'memText', 'memStats', 'memList',
      'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport',
      'memAuto', 'memFill', 'memUsage',
-     'setGreet', 'setGreetGap', 'setGreetMax', 'setPriceIn', 'setPriceOut', 'setRate',
+     'setGreet', 'setGreetGap', 'setGreetMax', 'setGreetUnlimited', 'setPriceIn', 'setPriceOut', 'setRate',
+     'memBalanceBtn',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
      'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
@@ -2527,13 +2590,16 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.memStats.textContent = '筛选结果：' + rows.length + ' 天 / ' + total + ' 条　·　全部共 ' + days.length + ' 天';
 
     if (ui.memUsage) {
-      var rec = store.usage && store.usage[dateKeyOf(new Date())];
-      if (rec) {
-        var cny = costOf(rec, store.settings);
-        ui.memUsage.textContent = '今日 ' + fmtNum(rec.input) + ' 入 + ' + fmtNum(rec.output) + ' 出 ≈ ' +
-          cny.toFixed(2) + ' 元 · ' + rec.calls + ' 次请求' + (rec.est ? '（含估算）' : '');
+      var bb = store.balance;
+      var rec0 = store.usage && store.usage[dateKeyOf(new Date())];
+      if (bb) {
+        ui.memUsage.textContent = '余额 ' + money(bb.last, bb.currency) + ' · 今日已花 ' +
+          money(balanceSpent(bb.last), bb.currency);
+      } else if (rec0) {
+        ui.memUsage.textContent = '今日 ' + fmtNum(rec0.input + rec0.output) + ' token · ' +
+          rec0.calls + ' 次（点「刷新余额」看真实花费）';
       } else {
-        ui.memUsage.textContent = '今天还没有用量记录';
+        ui.memUsage.textContent = '还没有余额数据，点下面「刷新余额」';
       }
     }
 
@@ -2753,6 +2819,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.btnExport.addEventListener('click', exportBackup);
 
+    ui.memBalanceBtn.addEventListener('click', function () { refreshBalance(false); });
+
     ui.memAuto.addEventListener('change', function (e) {
       store.settings.autoSummary = e.target.checked;
       save();
@@ -2761,8 +2829,30 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.memFill.addEventListener('click', fillMissing);
 
     ui.setGreet.addEventListener('change', function (e) { store.settings.greetEnabled = e.target.checked; save(); });
-    ui.setGreetGap.addEventListener('change', function (e) { store.settings.greetMinGap = Number(e.target.value) || 30; save(); });
-    ui.setGreetMax.addEventListener('change', function (e) { store.settings.greetMaxPerDay = Number(e.target.value) || 3; save(); });
+    ui.setGreetGap.addEventListener('input', function (e) {
+      var v = Number(e.target.value);
+      if (isNaN(v) || v < 1) return;
+      store.settings.greetMinGap = Math.round(v);
+      save();
+    });
+    ui.setGreetMax.addEventListener('input', function (e) {
+      var v = Number(e.target.value);
+      if (isNaN(v) || v < 1) return;
+      store.settings.greetMaxPerDay = Math.round(v);
+      save();
+    });
+    ui.setGreetUnlimited.addEventListener('change', function (e) {
+      if (e.target.checked) {
+        store.settings.greetMaxPerDay = 0;
+        ui.setGreetMax.value = '';
+        ui.setGreetMax.disabled = true;
+      } else {
+        store.settings.greetMaxPerDay = 3;
+        ui.setGreetMax.value = 3;
+        ui.setGreetMax.disabled = false;
+      }
+      save();
+    });
     ['setPriceIn', 'setPriceOut', 'setRate'].forEach(function (id) {
       ui[id].addEventListener('input', function (e) {
         var v = Number(e.target.value);
@@ -2789,8 +2879,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.setEvening.checked = !!s.reminders.evening;
     ui.setPersona.value = s.persona;
     ui.setGreet.checked = !!s.greetEnabled;
-    ui.setGreetGap.value = String(s.greetMinGap);
-    ui.setGreetMax.value = String(s.greetMaxPerDay);
+    ui.setGreetGap.value = s.greetMinGap;
+    var unlimited = Number(s.greetMaxPerDay) <= 0;
+    ui.setGreetUnlimited.checked = unlimited;
+    ui.setGreetMax.value = unlimited ? '' : s.greetMaxPerDay;
+    ui.setGreetMax.disabled = unlimited;
     ui.setPriceIn.value = s.priceIn;
     ui.setPriceOut.value = s.priceOut;
     ui.setRate.value = s.usdToCny;
@@ -3041,6 +3134,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     setInterval(updateClassBar, 30000);
     setTimeout(autoSummarize, 2500);
     setTimeout(runGreeting, 1800);
+    setTimeout(function () { refreshBalance(true); }, 4200);
     setTimeout(function () { pruneImages(); }, 1200);
 
     document.addEventListener('visibilitychange', function () {
