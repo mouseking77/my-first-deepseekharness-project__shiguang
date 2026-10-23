@@ -35,7 +35,7 @@ code = code.replace(/\}\)\(\);\s*$/, `
     balanceSpent, updateBalanceState, money,
     intentSignal, extractPromises, applyPromises, pendingPromises,
     detectActivity, recordActivity, activityBlock, habitBlock,
-    diaryCandidates, diaryBlock, markActivityDone, activityPhase
+    diaryCandidates, diaryBlock, markActivityDone
   };
 })();
 `);
@@ -601,8 +601,8 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   S10.activities = [];
   ok('能记下活动', G.recordActivity('健身', Date.now()));
   ok('活动块包含内容', G.activityBlock().indexOf('健身') >= 0);
-  S10.activities = [{ id: 'old', text: '吃饭', ts: Date.now() - 6 * 3600 * 1000 }];
-  eq('超过 2 小时就不再提', G.activityBlock(), '');
+  S10.activities = [{ id: 'old', text: '吃饭', ts: Date.now() - 7 * 3600 * 1000 }];
+  eq('超过 6 小时就不再提', G.activityBlock(), '');
   S10.activities = [{ id: 'a1', text: '健身', ts: Date.now() - 20 * 60000, used: false }];
   ok('刚才说的会提', G.activityBlock().indexOf('健身') >= 0);
   ok('问候里提过的不重复', G.activityBlock(true) !== '' && (function () {
@@ -613,17 +613,11 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('划掉后没有活动', S10.activities.length, 0);
 
   const t0 = Date.now();
-  const mk = (text, minsAgo) => G.activityPhase({ text: text, ts: t0 - minsAgo * 60000 }, t0);
-  eq('健身 60 分钟：还在进行', mk('健身', 60).phase, 'ongoing');
-  eq('健身 90 分钟：该结束了', mk('健身', 90).phase, 'ending');
-  eq('健身 180 分钟：已经结束', mk('健身', 180).phase, 'done');
-  eq('健身 300 分钟：不再提', mk('健身', 300).phase, 'stale');
-  eq('跑步 30 分钟：该结束了', mk('跑步', 30).phase, 'ending');
-  eq('跑步 45 分钟：已经结束', mk('跑步', 45).phase, 'done');
-  eq('跑步 90 分钟：不再提', mk('跑步', 90).phase, 'stale');
-  eq('未知活动按 60 分钟估', mk('发呆', 60).dur, 60);
   S10.activities = [{ id: 'x', text: '健身', ts: t0 - 100 * 60000, used: false }];
-  ok('活动块写出估时长', G.activityBlock().indexOf('90 分钟') >= 0);
+  const ab = G.activityBlock();
+  ok('活动块只给时间事实', ab.indexOf('过去了') >= 0);
+  ok('活动块不写死时长', ab.indexOf('一般') < 0);
+  ok('活动块含起始时刻', /说要去健身/.test(ab));
 
   S10.habits = ['周三晚上固定去健身'];
   ok('习惯块包含习惯', G.habitBlock().indexOf('周三晚上') >= 0);

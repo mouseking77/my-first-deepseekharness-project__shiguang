@@ -745,7 +745,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.24 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.25 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -1124,38 +1124,22 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return false;
   }
 
-  // 这类活动通常会持续多久（分钟），用来判断「还在进行 / 该结束了」
-  var ACTIVITY_DURATION = {
-    '健身': 90, '跑步': 30, '校园跑': 25, '锻炼': 45, '打球': 90, '篮球': 90, '足球': 90,
-    '羽毛球': 60, '游泳': 60, '吃饭': 40, '吃东西': 30, '洗澡': 30, '图书馆': 120, '自习': 120,
-    '上课': 90, '开会': 60, '看电影': 120, '散步': 30, '遛弯': 30, '回家': 40, '睡觉': 480,
-    '约会': 180, '面试': 60, '取快递': 20
-  };
-
-  function activityPhase(a, now) {
-    var dur = ACTIVITY_DURATION[a.text] || 60;
-    var mins = Math.max(0, Math.round((now - a.ts) / 60000));
-    var ratio = mins / dur;
-    var phase = ratio < 0.8 ? 'ongoing' : (ratio <= 1.25 ? 'ending' : (ratio <= 2.5 ? 'done' : 'stale'));
-    return { mins: mins, dur: dur, phase: phase };
-  }
-
   function activityBlock(forGreet) {
     var now = Date.now();
     var list = (store.activities || []).filter(function (a) {
-      if (activityPhase(a, now).phase === 'stale') return false;
-      if (forGreet && a.used) return false;
+      if (now - a.ts > 6 * 3600 * 1000) return false;   // 超过 6 小时就当它过去了
+      if (forGreet && a.used) return false;             // 问候里提过的，不重复
       return true;
     });
     if (!list.length) return '';
-    var label = { ongoing: '应该还在进行', ending: '差不多该结束了', done: '按常理已经结束了' };
     var lines = list.map(function (a) {
-      var ph = activityPhase(a, now);
-      return '- ' + ph.mins + ' 分钟前说要去' + a.text +
-        '（这类活动一般 ' + ph.dur + ' 分钟，' + label[ph.phase] + '）';
+      var mins = Math.max(0, Math.round((now - a.ts) / 60000));
+      var ago = mins < 60 ? (mins + ' 分钟') : (Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分钟');
+      return '- ' + hhmm(a.ts) + ' 说要去' + a.text + '（到现在过去了 ' + ago + '）';
     });
     return '【用户最近说要去做的事】\n' + lines.join('\n') +
-      '\n（刚结束的最适合问一句；还在进行可以问进展，但别催；他后来说过做完了就绝对别再提。）';
+      '\n（这只是一条时间事实。你大概知道这类事通常要多久，自己判断现在该不该问、问什么。' +
+      '刚开始就别催，过去太久了就干脆别提；他后来说过做完了就绝对不再提。）';
   }
 
   /* ---------- 课表事件：刚下课 / 快上课 ---------- */
