@@ -532,6 +532,17 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     </div>
 
     <div class="card">
+      <h3>日记</h3>
+      <div class="switch-row">
+        <span>打开时自动补写</span>
+        <input type="checkbox" id="setDiary">
+      </div>
+      <div id="diaryList"></div>
+      <button class="btn full" id="diaryWrite" style="margin-top:8px">补写昨天</button>
+      <p class="hint">打开 App 时它会补写上次没写的日子（最多补两天）。日记会作为记忆喂回给对话。</p>
+    </div>
+
+    <div class="card">
       <h3>待办</h3>
       <div id="pendList"></div>
       <p class="hint">它答应过你的事会出现在这里——说出口的承诺由它自己记，到下次聊天时自然跟进。</p>
@@ -734,7 +745,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.21 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.22 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -779,6 +790,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     thinking: false,
     persona: '',
     autoSummary: true,
+    diaryEnabled: true,
     thinkOpen: false,
     termStart: '',
     useCourses: true,
@@ -858,6 +870,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     s.promises = Array.isArray(s.promises) ? s.promises : [];
     s.activities = Array.isArray(s.activities) ? s.activities : [];
     s.habits = Array.isArray(s.habits) ? s.habits : [];
+    s.diaries = Array.isArray(s.diaries) ? s.diaries : [];
     s.promiseDay = s.promiseDay || '';
     s.intentDay = s.intentDay || '';
     s.greet = s.greet && typeof s.greet === 'object' ? s.greet : { day: '', count: 0 };
@@ -914,6 +927,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         promises: store.promises,
         activities: store.activities,
         habits: store.habits,
+        diaries: store.diaries,
         promiseDay: store.promiseDay,
         promiseCount: store.promiseCount,
         intentDay: store.intentDay,
@@ -1143,7 +1157,80 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return out.join('\n');
   }
 
-  /* ---------- 待办（模型自己立的 flag） ---------- */
+  /* ---------- 日记 ---------- */
+  var DIARY_RULES = [
+    '你在写今天的日记，用第一人称，像随手记的，不要文学腔。',
+    '写三段，每段一句到两句：',
+    '1. 今天发生了什么（只写真实发生过的，绝不能编）',
+    '2. 一点心情（克制，一句，可以用「有点」「还行」这类词）',
+    '3. 明天大概打算（可选，没有就不写）',
+    '总共不超过 150 字。不用感叹号堆情绪，不写「哈哈哈」。',
+    '直接输出日记正文，不要标题、不要日期。'
+  ].join('\n');
+
+  function diaryBlock() {
+    var list = (store.diaries || []).slice(-3);
+    if (!list.length) return '';
+    return '【你自己写的日记】\n' + list.map(function (d) {
+      return dayLabelShort(d.date) + '：' + d.text;
+    }).join('\n') + '\n（这是你过去几天写的。语气和心情可以延续，但不要主动背日记。）';
+  }
+
+  // 有内容但还没写日记的日子（从昨天往前找）
+  function diaryCandidates(diaries, daysWithContent, todayKey, lookback) {
+    var have = {};
+    (diaries || []).forEach(function (d) { have[d.date] = 1; });
+    var out = [];
+    var base = new Date(todayKey + 'T00:00:00');
+    for (var i = 1; i <= (lookback || 3); i++) {
+      var d = new Date(base.getTime());
+      d.setDate(d.getDate() - i);
+      var k = dateKeyOf(d);
+      if (have[k]) continue;
+      if (daysWithContent.indexOf(k) < 0) continue;
+      out.push(k);
+    }
+    return out;
+  }
+
+  function generateDiary(dayKey) {
+    var items = dayMessages(dayKey).filter(function (m) { return m.content && !m.error; });
+    if (items.length < 4) return Promise.resolve(false);
+    if (!store.settings.apiKey) return Promise.resolve(false);
+
+    var text = items.map(function (m) {
+      return (m.role === 'user' ? '我：' : '小深：') + String(m.content).replace(/\s+/g, ' ').slice(0, 200);
+    }).join('\n').slice(0, 6000);
+
+    return callAPI([
+      { role: 'system', content: DIARY_RULES },
+      { role: 'user', content: '日期：' + dayKey + '\n\n' + text }
+    ], { stream: false }).then(function (r) {
+      var out = String(r.content || '').trim().slice(0, 400);
+      if (!out) return false;
+      store.diaries = (store.diaries || []).filter(function (d) { return d.date !== dayKey; });
+      store.diaries.push({ date: dayKey, text: out, ts: Date.now() });
+      if (store.diaries.length > 30) store.diaries = store.diaries.slice(-30);
+      saveNow();
+      if (ui.memory && ui.memory.classList.contains('on')) renderMemory();
+      return true;
+    }).catch(function () { return false; });
+  }
+
+  function catchUpDiaries() {
+    if (!store.settings.diaryEnabled) return;
+    if (!store.settings.apiKey) return;
+    var todayKey = dateKeyOf(new Date());
+    var days = collectDays().filter(function (d) { return d.count >= 4; }).map(function (d) { return d.key; });
+    var missing = diaryCandidates(store.diaries, days, todayKey, 3).slice(0, 2);
+    if (!missing.length) return;
+    var i = 0;
+    function next() {
+      if (i >= missing.length) return;
+      generateDiary(missing[i++]).then(next);
+    }
+    next();
+  }
   function extractPromises(text) {
     var ps = [];
     var re = /<promise>([\s\S]*?)<\/promise>/gi;
@@ -1514,6 +1601,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (act) lines.push('', act);
     var hb = habitBlock();
     if (hb) lines.push('', hb);
+    var db = diaryBlock();
+    if (db) lines.push('', db);
     var pblock = promiseBlock(pending);
     if (pblock) lines.push('', pblock);
     lines.push('', COURSE_OP_RULES);
@@ -2277,7 +2366,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'setGreet', 'setGreetGap', 'setGreetMax', 'setGreetUnlimited', 'setPriceIn', 'setPriceOut', 'setRate',
      'memBalanceBtn',
      'wallet', 'btnWallet', 'walletTotal', 'walletSpent', 'walletDays', 'walletRefresh', 'balanceChip',
-     'msgMenu', 'pendList',
+     'msgMenu', 'pendList', 'diaryList', 'diaryWrite', 'setDiary',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
      'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
@@ -2940,6 +3029,21 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var total = rows.reduce(function (s, d) { return s + d.count; }, 0);
     ui.memStats.textContent = '筛选结果：' + rows.length + ' 天 / ' + total + ' 条　·　全部共 ' + days.length + ' 天';
 
+    if (ui.diaryList) {
+      var ds = (store.diaries || []).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      if (!ds.length) {
+        ui.diaryList.innerHTML = '<p class="hint" style="margin:0">还没有日记。</p>';
+      } else {
+        ui.diaryList.innerHTML = ds.slice(0, 7).map(function (d) {
+          return '<div class="day-msg" style="padding:8px 0">' +
+            '<b style="color:#a9c4ef">' + esc(dayLabelShort(d.date)) + '</b>' +
+            '<div style="margin-top:4px;color:#c3cddd;white-space:pre-wrap">' + esc(d.text) + '</div>' +
+            '<button class="day-del" style="margin-top:6px" data-ddel="' + esc(d.date) + '">删除</button>' +
+            '</div>';
+        }).join('');
+      }
+    }
+
     if (ui.pendList) {
       var ps = store.promises || [];
       if (!ps.length) {
@@ -3125,6 +3229,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.memTo.value = memState.to;
     ui.memSearch.value = memState.q;
     ui.memAuto.checked = !!store.settings.autoSummary;
+    if (ui.setDiary) ui.setDiary.checked = !!store.settings.diaryEnabled;
     renderMemory();
     openSheet('memory');
   }
@@ -3207,6 +3312,29 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       store.promises = (store.promises || []).filter(function (x) { return x.id !== pid; });
       saveNow();
       renderMemory();
+    });
+
+    ui.diaryWrite.addEventListener('click', function () {
+      var d = new Date();
+      d.setDate(d.getDate() - 1);
+      var k = dateKeyOf(d);
+      if (dayMessages(k).length < 4) { toast('昨天没什么可写的'); return; }
+      toast('正在写…');
+      generateDiary(k).then(function (ok) { toast(ok ? '写好了' : '没写成，检查 Key 或网络'); });
+    });
+
+    ui.diaryList.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-ddel]') : null;
+      if (!b) return;
+      var key = b.getAttribute('data-ddel');
+      store.diaries = (store.diaries || []).filter(function (x) { return x.date !== key; });
+      saveNow();
+      renderMemory();
+    });
+
+    ui.setDiary.addEventListener('change', function (e) {
+      store.settings.diaryEnabled = e.target.checked;
+      save();
     });
 
     ui.btnWallet.addEventListener('click', function () {
@@ -3695,6 +3823,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     setInterval(updateClassBar, 30000);
     setTimeout(autoSummarize, 2500);
     setTimeout(runGreeting, 1800);
+    setTimeout(catchUpDiaries, 5200);
     setTimeout(function () { refreshBalance(true); }, 4200);
     setTimeout(function () { pruneImages(); }, 1200);
 

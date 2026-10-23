@@ -34,7 +34,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     greetDecision, costOf, fmtNum, buildGreetPrompt,
     balanceSpent, updateBalanceState, money,
     intentSignal, extractPromises, applyPromises, pendingPromises,
-    detectActivity, recordActivity, activityBlock, habitBlock
+    detectActivity, recordActivity, activityBlock, habitBlock,
+    diaryCandidates, diaryBlock
   };
 })();
 `);
@@ -607,6 +608,21 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('习惯块包含习惯', G.habitBlock().indexOf('周三晚上') >= 0);
   S10.habits = [];
   eq('没有习惯时为空', G.habitBlock(), '');
+
+  console.log('\n[24] 日记');
+  const todayKey2 = '2026-10-21';
+  const daysWith = ['2026-10-20', '2026-10-19', '2026-10-18'];
+  const cand = G.diaryCandidates([], daysWith, todayKey2, 3);
+  eq('三天都没写就补三天', cand.length, 3);
+  eq('最近的一天排最前', cand[0], '2026-10-20');
+  eq('写过的不再补', G.diaryCandidates([{ date: '2026-10-20' }], daysWith, todayKey2, 3).length, 2);
+  eq('没对话的日子不写', G.diaryCandidates([], ['2026-10-20'], todayKey2, 3).length, 1);
+
+  S10.diaries = [{ date: '2026-10-20', text: '今天调了部署，有点累。' }];
+  ok('日记块含日期', G.diaryBlock().indexOf('10月20日') >= 0);
+  ok('日记块含正文', G.diaryBlock().indexOf('部署') >= 0);
+  S10.diaries = [];
+  eq('没有日记时为空', G.diaryBlock(), '');
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
