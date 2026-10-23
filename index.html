@@ -61,6 +61,20 @@ header{
 .wallet-day:last-child{border-bottom:0}
 .wallet-day span:last-child{color:#8b95a8;font-variant-numeric:tabular-nums}
 
+/* 长按菜单 + 文本选择 */
+.msg .bubble{user-select:text;-webkit-user-select:text}
+button,.icon-btn,.time-chip,.send-btn,.btn,.conv-item{-webkit-user-select:none;user-select:none}
+.msg-menu{
+  position:fixed;z-index:80;min-width:120px;
+  background:#1b2333;border:1px solid #2a3448;border-radius:12px;
+  box-shadow:0 12px 28px rgba(0,0,0,.55);overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.msg-menu[hidden]{display:none}
+.msg-menu button{padding:12px 16px;font-size:14.5px;color:#dfe5ef;text-align:left}
+.msg-menu button + button{border-top:1px solid #242c3c}
+.msg-menu button:active{background:#232d40}
+
 /* ---------- messages ---------- */
 main{
   position:fixed;left:0;right:0;
@@ -436,6 +450,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   </div>
 </div>
 
+<div class="msg-menu" id="msgMenu" hidden>
+  <button data-act="copy">复制</button>
+  <button data-act="quote">引用</button>
+  <button data-act="regen">重新生成</button>
+</div>
+
 <div class="scrim" id="scrim"></div>
 
 <!-- 对话列表 -->
@@ -703,7 +723,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.17 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.18 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -2031,6 +2051,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'setGreet', 'setGreetGap', 'setGreetMax', 'setGreetUnlimited', 'setPriceIn', 'setPriceOut', 'setRate',
      'memBalanceBtn',
      'wallet', 'btnWallet', 'walletTotal', 'walletSpent', 'walletDays', 'walletRefresh', 'balanceChip',
+     'msgMenu',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
      'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
@@ -3083,6 +3104,102 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       });
   }
 
+  /* ---------- 消息长按菜单 ---------- */
+  var msgMenuTarget = null;
+
+  function findMsg(id) {
+    var conv = getActiveConv();
+    for (var i = 0; i < conv.messages.length; i++) {
+      if (conv.messages[i].id === id) return { msg: conv.messages[i], index: i, conv: conv };
+    }
+    return null;
+  }
+
+  function hideMsgMenu() {
+    if (ui.msgMenu) ui.msgMenu.hidden = true;
+    msgMenuTarget = null;
+  }
+
+  function showMsgMenu(id, x, y) {
+    var found = findMsg(id);
+    if (!found) return;
+    msgMenuTarget = found;
+    var isLast = found.index === found.conv.messages.length - 1;
+    var regenBtn = ui.msgMenu.querySelector('[data-act="regen"]');
+    if (regenBtn) regenBtn.hidden = !(found.msg.role === 'assistant' && isLast);
+
+    ui.msgMenu.hidden = false;
+    var w = ui.msgMenu.offsetWidth || 120;
+    var h = ui.msgMenu.offsetHeight || 130;
+    var left = Math.min(Math.max(8, x - w / 2), (window.innerWidth || 360) - w - 8);
+    var top = Math.min(Math.max(8, y - h - 10), (window.innerHeight || 640) - h - 8);
+    ui.msgMenu.style.left = left + 'px';
+    ui.msgMenu.style.top = top + 'px';
+  }
+
+  function fallbackCopy(t) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = t;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, t.length);
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  function copyText(t) {
+    t = String(t == null ? '' : t);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t).catch(function () { return fallbackCopy(t); });
+    }
+    return fallbackCopy(t);
+  }
+
+  function quoteMsg(m) {
+    var t = String(m.content || '').replace(/\s+/g, ' ').slice(0, 60);
+    ui.input.value = '关于「' + t + '」：';
+    autoGrow();
+    updateSendBtn();
+    try { ui.input.focus(); } catch (e) { /* 忽略 */ }
+  }
+
+  function regenerateLast() {
+    if (busy) { toast('等这条回完再试'); return; }
+    var conv = getActiveConv();
+    var msgs = conv.messages;
+    if (msgs.length < 2) { toast('没有可重发的提问'); return; }
+    var last = msgs[msgs.length - 1];
+    if (last.role !== 'assistant') { toast('只能重新生成最后一条回复'); return; }
+    var idx = -1;
+    for (var i = msgs.length - 2; i >= 0; i--) {
+      if (msgs[i].role === 'user') { idx = i; break; }
+    }
+    if (idx < 0) { toast('没有可重发的提问'); return; }
+    var um = msgs[idx];
+    var imgId = um.img && um.img.id;
+    var cached = imgId ? imgCache[imgId] : null;
+    if (imgId && !cached) { toast('这条带图片，暂不支持重新生成'); return; }
+
+    conv.messages = msgs.slice(0, idx);
+    saveNow();
+    if (cached) {
+      pendingImg = { dataUrl: cached, w: um.img.w, h: um.img.h };
+      ui.imgPreviewImg.src = cached;
+      ui.imgPreview.hidden = false;
+    }
+    ui.input.value = um.content;
+    renderMessages(true);
+    send();
+  }
+
   /* ============================ toast ============================ */
   var toastTimer = 0;
   function toast(msg) {
@@ -3175,6 +3292,63 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (!tag) return;
       var box = tag.parentElement;
       if (box) box.classList.toggle('open');
+    });
+
+    /* 长按消息 → 复制 / 引用 / 重新生成 */
+    var pressTimer = 0, pressStart = null, pressId = null, pressMoved = false;
+
+    ui.msgWrap.addEventListener('touchstart', function (e) {
+      var row = e.target.closest ? e.target.closest('.msg') : null;
+      if (!row) return;
+      pressMoved = false;
+      pressId = row.getAttribute('data-mid');
+      pressStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      clearTimeout(pressTimer);
+      pressTimer = setTimeout(function () {
+        if (pressMoved) return;
+        if (pressStart) showMsgMenu(pressId, pressStart.x, pressStart.y);
+      }, 480);
+    }, { passive: true });
+
+    ui.msgWrap.addEventListener('touchmove', function (e) {
+      if (!pressStart) return;
+      var dx = e.touches[0].clientX - pressStart.x;
+      var dy = e.touches[0].clientY - pressStart.y;
+      if (dx * dx + dy * dy > 120) { pressMoved = true; clearTimeout(pressTimer); }
+    }, { passive: true });
+
+    ui.msgWrap.addEventListener('touchend', function () { clearTimeout(pressTimer); pressStart = null; }, { passive: true });
+    ui.msgWrap.addEventListener('touchcancel', function () { clearTimeout(pressTimer); pressStart = null; }, { passive: true });
+
+    ui.msgWrap.addEventListener('contextmenu', function (e) {
+      var row = e.target.closest ? e.target.closest('.msg') : null;
+      if (!row) return;
+      e.preventDefault();
+      showMsgMenu(row.getAttribute('data-mid'), e.clientX, e.clientY);
+    });
+
+    ui.msgMenu.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-act]') : null;
+      if (!btn) return;
+      var act = btn.getAttribute('data-act');
+      var target = msgMenuTarget;
+      hideMsgMenu();
+      if (!target) return;
+      if (act === 'copy') {
+        copyText(target.msg.content)
+          .then(function () { toast('已复制'); })
+          .catch(function () { toast('复制失败，长按文字手动选吧'); });
+      } else if (act === 'quote') {
+        quoteMsg(target.msg);
+      } else if (act === 'regen') {
+        regenerateLast();
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (ui.msgMenu.hidden) return;
+      if (ui.msgMenu.contains(e.target)) return;
+      hideMsgMenu();
     });
 
     document.addEventListener('keydown', function (e) {
