@@ -36,7 +36,7 @@ code = code.replace(/\}\)\(\);\s*$/, `
     intentSignal, extractPromises, applyPromises, pendingPromises,
     detectActivity, recordActivity, activityBlock, habitBlock,
     diaryCandidates, diaryBlock, markActivityDone,
-    shouldSearch, searchBlock
+    shouldSearch, searchBlock, factBlock, extractTagged
   };
 })();
 `);
@@ -656,6 +656,17 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
 
   const cw = G.costOf({ input: 0, output: 0, cacheHit: 0, searches: 1000 }, price);
   ok('1000 次搜索约 5.4 元', Math.abs(cw - 5.4) < 0.1);
+
+  console.log('\n[26] 事实与记忆');
+  S10.facts = [{ id: 'f1', text: '不吃香菜', ts: 0 }];
+  ok('事实块含内容', G.factBlock().indexOf('不吃香菜') >= 0);
+  S10.facts = [];
+  eq('没有事实时为空', G.factBlock(), '');
+
+  const tg = G.extractTagged('正文 <fact>不吃香菜</fact> 尾巴 <fact>爱喝冰美式</fact>', 'fact');
+  eq('抽出两条事实', tg.items.length, 2);
+  ok('正文里没有标签残留', tg.clean.indexOf('<fact>') < 0);
+  ok('正文保留', tg.clean.indexOf('正文') >= 0);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
