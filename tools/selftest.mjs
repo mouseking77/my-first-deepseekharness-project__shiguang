@@ -35,7 +35,7 @@ code = code.replace(/\}\)\(\);\s*$/, `
     balanceSpent, updateBalanceState, money,
     intentSignal, extractPromises, applyPromises, pendingPromises,
     detectActivity, recordActivity, activityBlock, habitBlock,
-    diaryCandidates, diaryBlock
+    diaryCandidates, diaryBlock, markActivityDone
   };
 })();
 `);
@@ -602,7 +602,15 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('能记下活动', G.recordActivity('健身', Date.now()));
   ok('活动块包含内容', G.activityBlock().indexOf('健身') >= 0);
   S10.activities = [{ id: 'old', text: '吃饭', ts: Date.now() - 6 * 3600 * 1000 }];
-  eq('超过 4 小时就不再提', G.activityBlock(), '');
+  eq('超过 2 小时就不再提', G.activityBlock(), '');
+  S10.activities = [{ id: 'a1', text: '健身', ts: Date.now() - 20 * 60000, used: false }];
+  ok('刚才说的会提', G.activityBlock().indexOf('健身') >= 0);
+  ok('问候里提过的不重复', G.activityBlock(true) !== '' && (function () {
+    S10.activities[0].used = true;
+    return G.activityBlock(true) === '';
+  })());
+  ok('说做完了会划掉', G.markActivityDone('跑完了'));
+  eq('划掉后没有活动', S10.activities.length, 0);
 
   S10.habits = ['周三晚上固定去健身'];
   ok('习惯块包含习惯', G.habitBlock().indexOf('周三晚上') >= 0);
