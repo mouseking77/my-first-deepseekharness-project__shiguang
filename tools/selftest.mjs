@@ -35,7 +35,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     balanceSpent, updateBalanceState, money,
     intentSignal, extractPromises, applyPromises, pendingPromises,
     detectActivity, recordActivity, activityBlock, habitBlock,
-    diaryCandidates, diaryBlock, markActivityDone
+    diaryCandidates, diaryBlock, markActivityDone,
+    shouldSearch, searchBlock
   };
 })();
 `);
@@ -638,6 +639,23 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('日记块含正文', G.diaryBlock().indexOf('部署') >= 0);
   S10.diaries = [];
   eq('没有日记时为空', G.diaryBlock(), '');
+
+  console.log('\n[25] 联网搜索');
+  ok('「搜一下」触发', G.shouldSearch('帮我搜一下 DeepSeek 最新版本'));
+  ok('「查查天气」触发', G.shouldSearch('查查明天天气'));
+  ok('普通聊天不触发', !G.shouldSearch('今天有点累'));
+  ok('长文本不触发', !G.shouldSearch('搜一下' + '很长的内容'.repeat(40)));
+  const sb = G.searchBlock({
+    query: '测试查询',
+    results: [{ title: '标题一', url: 'https://a.com', summary: '摘要一' }]
+  });
+  ok('搜索块含查询', sb.indexOf('测试查询') >= 0);
+  ok('搜索块含摘要', sb.indexOf('摘要一') >= 0);
+  ok('搜索块含链接', sb.indexOf('https://a.com') >= 0);
+  eq('空结果返回空块', G.searchBlock({ query: 'x', results: [] }), '');
+
+  const cw = G.costOf({ input: 0, output: 0, cacheHit: 0, searches: 1000 }, price);
+  ok('1000 次搜索约 5.4 元', Math.abs(cw - 5.4) < 0.1);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

@@ -134,6 +134,9 @@ details.think div{margin-top:5px;padding:8px 10px;border-left:2px solid #2c3547;
 }
 .think.open .think-body{display:block}
 .why{font-size:11.5px;color:#5f6b80;margin-top:6px;font-style:italic}
+.sources{margin-top:8px;padding-top:8px;border-top:1px dashed #232b3a;display:flex;flex-direction:column;gap:3px}
+.src-title{font-size:11px;color:#5f6b80;margin-bottom:2px}
+.sources a{font-size:12px;color:#7aa8ff;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .typing{display:inline-flex;gap:4px;padding:2px 0}
 .typing i{width:6px;height:6px;border-radius:50%;background:#5a6780;animation:blink 1.2s infinite}
@@ -667,6 +670,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <span>默认展开思考过程</span>
         <input type="checkbox" id="setThinkOpen">
       </div>
+      <div class="switch-row">
+        <span>联网搜索（说「搜一下…」时触发）</span>
+        <input type="checkbox" id="setSearch">
+      </div>
       <button class="btn full" id="btnTest" style="margin-top:10px">测试连接</button>
       <p class="hint" id="testResult"></p>
       <p class="hint">Key 只保存在这台手机的浏览器里。想更安全，可以填一个自己的中转地址（见 README）。</p>
@@ -745,7 +752,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.25 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.26 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -791,6 +798,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     persona: '',
     autoSummary: true,
     diaryEnabled: true,
+    webSearch: true,
     thinkOpen: false,
     termStart: '',
     useCourses: true,
@@ -1993,7 +2001,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var miss = Math.max(0, (rec.input || 0) - hit);
     var priceIn = Number(s.priceIn) || 0;
     var priceOut = Number(s.priceOut) || 0;
-    var usd = (miss / 1e6) * priceIn + (hit / 1e6) * (priceIn / 50) + ((rec.output || 0) / 1e6) * priceOut;
+    var usd = (miss / 1e6) * priceIn + (hit / 1e6) * (priceIn / 50) +
+      ((rec.output || 0) / 1e6) * priceOut + ((rec.searches || 0) * 0.00075);
     return usd * (Number(s.usdToCny) || 1);
   }
 
@@ -2123,6 +2132,60 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function money(n, cur) {
     var sym = (cur === 'USD') ? '$' : '¥';
     return sym + (Math.round(n * 100) / 100).toFixed(2);
+  }
+
+  /* ---------- 联网搜索 ---------- */
+  var SEARCH_WORDS = ['搜一下', '搜搜', '搜索', '查一下', '查查', '帮我查', '上网查', '最新消息', '今天天气', '比分', '股价', '新闻'];
+
+  function shouldSearch(text) {
+    var t = String(text == null ? '' : text);
+    if (!t || t.length > 140) return false;
+    for (var i = 0; i < SEARCH_WORDS.length; i++) {
+      if (t.indexOf(SEARCH_WORDS[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function searchQuotaLeft() {
+    var rec = store.usage[dateKeyOf(new Date())];
+    var used = (rec && rec.searches) || 0;
+    return used < 20;
+  }
+
+  function recordSearch() {
+    var day = dateKeyOf(new Date());
+    var rec = store.usage[day] || (store.usage[day] = { input: 0, output: 0, cacheHit: 0, calls: 0, est: 0 });
+    rec.searches = (rec.searches || 0) + 1;
+    save();
+  }
+
+  function doSearch(query) {
+    var key = (store.settings.apiKey || '').trim();
+    if (!key) return Promise.reject(apiError('no_key'));
+    return fetch(apiBase() + '/v1/tools/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({ query: String(query).slice(0, 120), count: 5, need_content: false })
+    }).catch(function (e) {
+      throw apiError('network', { cause: e });
+    }).then(function (res) {
+      if (!res.ok) throw apiError('http', { status: res.status, detail: '搜索接口' });
+      return res.json();
+    }).then(function (j) {
+      var results = (j.results || []).slice(0, 5);
+      recordSearch();
+      return results;
+    });
+  }
+
+  function searchBlock(s) {
+    if (!s || !s.results || !s.results.length) return '';
+    var lines = s.results.map(function (r, i) {
+      return (i + 1) + '. ' + (r.title || '') + ' — ' + (r.summary || r.snippet || '') +
+        '（' + (r.url || '') + '）';
+    });
+    return '【联网搜索结果：' + s.query + '】\n' + lines.join('\n') +
+      '\n（用这些信息回答。和问题无关就忽略；引用事实时把来源链接写出来。）';
   }
 
   function runGreeting() {
@@ -2386,7 +2449,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'camera', 'camVideo', 'camClose', 'camSwitch', 'camShoot',
      'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
      'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
-     'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona', 'setThinkOpen',
+     'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona', 'setThinkOpen', 'setSearch',
      'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState',
      'memory', 'btnMemory', 'memBar', 'memText', 'memStats', 'memList',
      'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport',
@@ -2465,6 +2528,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
           '</div>';
       }
       out += renderMarkdown(m.content || '');
+      if (m.sources && m.sources.length) {
+        out += '<div class="sources"><div class="src-title">来源</div>' +
+          m.sources.map(function (s, i) {
+            return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' +
+              (i + 1) + '. ' + esc(s.title || s.url) + '</a>';
+          }).join('') + '</div>';
+      }
       if (m.why) out += '<div class="why">· ' + esc(m.why) + '</div>';
       if (m.opLog && m.opLog.length) {
         out += '<div class="oplog"><b>📚 课表已更新</b><br>' +
@@ -2602,11 +2672,26 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       toast('当前模型不支持图片，请先在设置里切到 deepseek-flash');
       return;
     }
-    text = text || '看看这张图';
+    var t = text || '看看这张图';
     ui.input.value = '';
     if (ui.pickMenu) ui.pickMenu.hidden = true;
     autoGrow();
     updateSendBtn();
+
+    if (store.settings.webSearch && shouldSearch(t) && searchQuotaLeft()) {
+      toast('正在联网搜索…');
+      doSearch(t).then(function (results) {
+        doSend(t, img, { query: t, results: results });
+      }).catch(function (err) {
+        toast('搜索没成功：' + explainError(err));
+        doSend(t, img, null);
+      });
+      return;
+    }
+    doSend(t, img, null);
+  }
+
+  function doSend(text, img, search) {
 
     var conv = getActiveConv();
     var ctx = nowContext();
@@ -2625,6 +2710,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (img) {
       system += '\n\n【这次用户发了图片】先用文字逐字读出图中的内容（题目文字、数字、符号、上下标），确认无误后再回答或解答；看不清的地方就直接说看不清，不要猜。公式用 LaTeX 表示。';
     }
+    if (search) system += '\n\n' + searchBlock(search);
 
     var history = composePayload(
       conv.messages.filter(function (m) { return !m.error && (m.content || m.img); }).slice(-40),
@@ -2682,6 +2768,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       }
     }).then(function (res) {
       if (res && res.content) aiMsg.content = res.content;
+      if (search && search.results && search.results.length) {
+        aiMsg.sources = search.results.slice(0, 5).map(function (r) {
+          return { title: r.site_name || r.title || r.url, url: r.url };
+        });
+      }
       if (aiMsg.content) {
         var parsed = extractOps(aiMsg.content);
         if (parsed.ops.length) {
@@ -3423,6 +3514,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.setProxy.value = s.proxyUrl;
     ui.setThinking.checked = !!s.thinking;
     ui.setThinkOpen.checked = !!s.thinkOpen;
+    ui.setSearch.checked = !!s.webSearch;
     ui.setRemOn.checked = !!s.reminders.enabled;
     ui.setTone.value = s.reminders.tone;
     ui.setNight.checked = !!s.reminders.night;
@@ -3473,6 +3565,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       store.settings.thinkOpen = e.target.checked;
       save();
       renderMessages(false);
+    });
+    ui.setSearch.addEventListener('change', function (e) {
+      store.settings.webSearch = e.target.checked;
+      save();
     });
     ui.setPersona.addEventListener('input', function (e) { store.settings.persona = e.target.value; save(); });
 

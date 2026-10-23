@@ -1,5 +1,5 @@
 /* 时光 · 离线缓存 */
-const CACHE = 'shiguang-v25';
+const CACHE = 'shiguang-v26';
 const ASSETS = [
   './',
   './index.html',
