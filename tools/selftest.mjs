@@ -32,7 +32,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     extractOps, applyScheduleOps, parseWeeksSpec, toWeekday, buildSchedulePrompt,
     imgTargetSize, composePayload, pickImagesToDrop,
     greetDecision, costOf, fmtNum, buildGreetPrompt,
-    balanceSpent, updateBalanceState, money
+    balanceSpent, updateBalanceState, money,
+    intentSignal, extractPromises, applyPromises, pendingPromises
   };
 })();
 `);
@@ -152,7 +153,7 @@ S.hints = {}; S.lastHintTs = 0;
 
 console.log('\n[5] 提示词');
 const ctx = { full: '2026年5月1日 23:41', weekday: '星期五', period: '深夜', clock: '23:41', minutes: 23 * 60 + 41, ts: ts2330 };
-const p1 = G.buildSystemPrompt(ctx, night, S.settings, '3 小时前');
+const p1 = G.buildSystemPrompt(ctx, night, S.settings, '3 小时前', 'time');
 ok('含准确时间', p1.includes('2026年5月1日 23:41'));
 ok('含星期', p1.includes('星期五'));
 ok('含本轮建议', p1.includes('【本轮建议】') && p1.includes('早点休息'));
@@ -553,6 +554,39 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   const s21 = { greetEnabled: true, apiKey: 'k', greetMinGap: 60, greetMaxPerDay: 0 };
   ok('次数 0 = 不限', G.greetDecision({ lastSeen: now19 - 600 * 60000, greetDay: '2026-10-21', greetCount: 99 }, now19, s21));
   ok('不限也要满足间隔', !G.greetDecision({ lastSeen: now19 - 10 * 60000, greetDay: '2026-10-21', greetCount: 0 }, now19, s21));
+
+  console.log('\n[22] 意图信号与待办');
+  ok('识别「好困」', G.intentSignal('我好困啊'));
+  ok('识别「该睡了」', G.intentSignal('该睡了'));
+  ok('不把抱怨当困', !G.intentSignal('这个 bug 搞死我了'));
+  ok('普通闲聊不触发', !G.intentSignal('今天吃了面'));
+
+  const pr = G.extractPromises('行，明天问你结果。\n<promise>问面试结果</promise>');
+  eq('剥离标签后的正文', pr.clean, '行，明天问你结果。');
+  eq('解析出 1 条待办', pr.promises.length, 1);
+  eq('待办内容', pr.promises[0], '问面试结果');
+  eq('坏标签被忽略', G.extractPromises('<promise></promise>好的').promises.length, 0);
+
+  const S9 = G.store;
+  S9.promises = [];
+  S9.promiseDay = '';
+  S9.promiseCount = 0;
+  eq('第一条能记下', G.applyPromises(['问面试结果']), 1);
+  eq('同一天只记一条', G.applyPromises(['顺带问作业']), 0);
+  eq('待办总数', S9.promises.length, 1);
+
+  const old = { id: 'p1', text: '问面试结果', ts: Date.now() - 7 * 3600 * 1000, done: false };
+  const fresh = { id: 'p2', text: '刚说的', ts: Date.now(), done: false };
+  S9.promises = [old, fresh];
+  eq('只有超过 6 小时的才算到期', G.pendingPromises().length, 1);
+  eq('到期的是那条', G.pendingPromises()[0].id, 'p1');
+
+  const pIntent = G.buildSystemPrompt(
+    { full: '2026-10-21 23:40', weekday: '星期三', period: '深夜', clock: '23:40', minutes: 1420, ts: now19, dayKey: '2026-10-21' },
+    null, S9.settings, '3 小时前', 'intent', []
+  );
+  ok('意图模式给出不同建议', pIntent.indexOf('用户刚才提到累') >= 0);
+  ok('提醒限定半句', pIntent.indexOf('半句话') >= 0);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

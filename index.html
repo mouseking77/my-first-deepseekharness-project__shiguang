@@ -530,6 +530,12 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       <button class="btn full" id="memReset" style="margin-top:10px">清除筛选</button>
     </div>
 
+    <div class="card">
+      <h3>待办</h3>
+      <div id="pendList"></div>
+      <p class="hint">它答应过你的事会出现在这里——说出口的承诺由它自己记，到下次聊天时自然跟进。</p>
+    </div>
+
     <div id="memList"></div>
 
     <div class="card">
@@ -723,7 +729,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.18 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.19 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -753,6 +759,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     'update 的 field 只能是 room / time / weekday / weeks / name；time 的值形如 "14:00-15:40"。',
     '只有你确实要修改课表时才输出标签；用户只是询问课表时绝对不要输出。',
     '输出标签后，再用一句话告诉用户你改了什么，不要解释标签本身的存在。'
+  ].join('\n');
+
+  var PROMISE_RULES = [
+    '【待办协议】',
+    '当你说出「明天问你结果」「回头提醒你」这类承诺时，在回复末尾输出一次：',
+    '<promise>问面试结果</promise>',
+    '标签里写要跟进的那件事，一句话。只有你确实打算跟进时才输出，不要每句都说。'
   ].join('\n');
   var DEFAULT_SETTINGS = {
     apiKey: '',
@@ -836,6 +849,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     s.days = s.days && typeof s.days === 'object' ? s.days : {};
     s.usage = s.usage && typeof s.usage === 'object' ? s.usage : {};
     s.balance = s.balance && typeof s.balance === 'object' ? s.balance : null;
+    s.promises = Array.isArray(s.promises) ? s.promises : [];
+    s.promiseDay = s.promiseDay || '';
+    s.intentDay = s.intentDay || '';
     s.greet = s.greet && typeof s.greet === 'object' ? s.greet : { day: '', count: 0 };
     s.courses = Array.isArray(s.courses) ? s.courses : [];
     s.courses.forEach(function (c) { if (!c.id) c.id = uid(); if (!Array.isArray(c.weeks)) c.weeks = []; });
@@ -887,6 +903,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         courses: store.courses,
         usage: store.usage,
         balance: store.balance,
+        promises: store.promises,
+        promiseDay: store.promiseDay,
+        promiseCount: store.promiseCount,
+        intentDay: store.intentDay,
+        intentCount: store.intentCount,
         greet: store.greet,
         lastHintTs: store.lastHintTs,
         lastSeen: store.lastSeen
@@ -957,12 +978,21 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (!keys.length) return '';
     var rows = [];
     keys.forEach(function (k) {
-      var t = (store.days[k] && store.days[k].text) || '';
-      if (t) rows.push('- ' + dayLabelShort(k) + '：' + t);
+      var d = store.days[k] || {};
+      var t = d.text || '';
+      if (!t) return;
+      var range = '';
+      if (d.from && d.to) range = ' ' + hhmm(d.from) + '–' + hhmm(d.to);
+      rows.push('- ' + dayLabelShort(k) + range + '：' + t);
     });
     if (!rows.length) return '';
     return '【最近几天的记忆】\n' + rows.join('\n') +
       '\n（这是你和用户过去几天的聊天摘要，只作为背景参考。不要主动复述，只在相关时自然用上。）';
+  }
+
+  function hhmm(ts) {
+    var d = new Date(ts);
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
 
   function nowContext() {
@@ -1010,6 +1040,71 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var hrs = Math.floor(mins / 60);
     if (hrs < 24) return hrs + ' 小时前';
     return Math.floor(hrs / 24) + ' 天前';
+  }
+
+  /* ---------- 意图信号：用户说累/困/要睡 ---------- */
+  var INTENT_WORDS = ['好累', '累死', '累坏', '困了', '好困', '太困', '想睡', '要睡', '睡了', '睡觉', '熬夜', '失眠', '撑不住', '没精神', '不想动', '睁不开眼'];
+
+  function intentSignal(text) {
+    var t = String(text == null ? '' : text);
+    for (var i = 0; i < INTENT_WORDS.length; i++) {
+      if (t.indexOf(INTENT_WORDS[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function intentAllowed(nowTs) {
+    var r = store.settings.reminders;
+    if (!r.enabled || r.tone === 'quiet') return false;
+    if (store.lastHintTs && nowTs - store.lastHintTs < COOLDOWN_MS) return false;
+    var day = dateKeyOf(new Date(nowTs));
+    var cnt = store.intentDay === day ? (store.intentCount || 0) : 0;
+    return cnt < 3;
+  }
+
+  /* ---------- 待办（模型自己立的 flag） ---------- */
+  function extractPromises(text) {
+    var ps = [];
+    var re = /<promise>([\s\S]*?)<\/promise>/gi;
+    var clean = String(text == null ? '' : text).replace(re, function (_, body) {
+      var t = body.trim();
+      if (t) ps.push(t);
+      return '';
+    });
+    return { clean: clean.replace(/\n{3,}/g, '\n\n').trim(), promises: ps };
+  }
+
+  function applyPromises(list) {
+    if (!list || !list.length) return 0;
+    var day = dateKeyOf(new Date());
+    if (store.promiseDay !== day) { store.promiseDay = day; store.promiseCount = 0; }
+    var added = 0;
+    for (var i = 0; i < list.length && added < 1; i++) {
+      if ((store.promiseCount || 0) >= 1) break;
+      var t = String(list[i] || '').trim().slice(0, 60);
+      if (!t) continue;
+      store.promises.push({ id: uid(), text: t, ts: Date.now(), done: false });
+      store.promiseCount = (store.promiseCount || 0) + 1;
+      added++;
+    }
+    if (store.promises.length > 8) store.promises = store.promises.slice(-8);
+    return added;
+  }
+
+  function pendingPromises() {
+    var now = Date.now();
+    return (store.promises || []).filter(function (p) {
+      return !p.done && now - p.ts > 6 * 3600 * 1000;
+    }).slice(0, 3);
+  }
+
+  function promiseBlock(list) {
+    if (!list || !list.length) return '';
+    var lines = list.map(function (p) {
+      return '- ' + p.text + '（' + dayLabelShort(dateKeyOf(new Date(p.ts))) + ' 说的）';
+    });
+    return '【你之前答应过】\n' + lines.join('\n') +
+      '\n（如果时机合适，可以自然跟进一句；别像催办，也别硬提。）';
   }
 
   /* ============================ 课表 ============================ */
@@ -1281,11 +1376,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return soft + slot.action + '；如果对方正在忙、在讲正事、情绪低落，或者明确表示不用管，就自然跳过，不要提时间。';
   }
 
-  function buildSystemPrompt(ctx, slot, settings, gap) {
+  function buildSystemPrompt(ctx, slot, settings, gap, kind, pending) {
     var tone = settings.reminders.tone;
-    var hint = (slot && settings.reminders.enabled && tone !== 'quiet')
-      ? '【本轮建议】现在是' + ctx.period + '（' + ctx.clock + '）。' + directiveFor(slot, tone)
-      : '【本轮建议】本轮不需要主动提时间，正常对话就好。';
+    var hint;
+    if (kind === 'intent') {
+      hint = '【本轮建议】用户刚才提到累/困/想睡。可以顺着这一点关心一句；别说教、别长篇，半句话带过。';
+    } else if (kind === 'both') {
+      hint = '【本轮建议】现在是' + ctx.period + '（' + ctx.clock + '），用户又提到累/困。把时间和他的状态合起来说一句，半句话。';
+    } else if (kind === 'time') {
+      hint = '【本轮建议】现在是' + ctx.period + '（' + ctx.clock + '）。' + directiveFor(slot, tone);
+    } else {
+      hint = '【本轮建议】本轮不需要主动提时间，正常对话就好。';
+    }
 
     var persona = (settings.persona || '').trim();
     var lines = [
@@ -1320,8 +1422,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (mem) lines.push('', mem);
     var cls = courseBlock(ctx);
     if (cls) lines.push('', cls);
+    var pblock = promiseBlock(pending);
+    if (pblock) lines.push('', pblock);
     lines.push('', COURSE_OP_RULES);
-    lines.push('', '回复尽量简洁，除非用户要求展开。');
+    lines.push('', PROMISE_RULES);
+    lines.push('', '回复尽量简洁，除非用户要求展开。关心只用半句话，附在正文末尾，不单独成行，不超过 20 字。');
     return lines.join('\n');
   }
 
@@ -2051,7 +2156,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'setGreet', 'setGreetGap', 'setGreetMax', 'setGreetUnlimited', 'setPriceIn', 'setPriceOut', 'setRate',
      'memBalanceBtn',
      'wallet', 'btnWallet', 'walletTotal', 'walletSpent', 'walletDays', 'walletRefresh', 'balanceChip',
-     'msgMenu',
+     'msgMenu', 'pendList',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
      'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
@@ -2269,10 +2374,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var prevTs = store.lastSeen;
     var gap = gapText(prevTs, ctx.ts);
     var slot = activeSlot(ctx.minutes);
-    var allowed = hintAllowed(slot, ctx.ts);
+    var timeHit = hintAllowed(slot, ctx.ts);
+    var intentHit = intentSignal(text) && intentAllowed(ctx.ts);
+    var allowed = timeHit || intentHit;
+    var kind = timeHit && intentHit ? 'both' : (timeHit ? 'time' : (intentHit ? 'intent' : ''));
+    var pending = pendingPromises();
     var system = conv.mode === 'schedule'
       ? buildSchedulePrompt()
-      : buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gap);
+      : buildSystemPrompt(ctx, timeHit ? slot : null, store.settings, gap, kind, pending);
 
     if (img) {
       system += '\n\n【这次用户发了图片】先用文字逐字读出图中的内容（题目文字、数字、符号、上下标），确认无误后再回答或解答；看不清的地方就直接说看不清，不要猜。公式用 LaTeX 表示。';
@@ -2340,11 +2449,24 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
           var logs = applyScheduleOps(parsed.ops);
           if (logs.length) aiMsg.opLog = logs;
         }
+        var pp = extractPromises(aiMsg.content);
+        if (pp.promises.length) {
+          aiMsg.content = pp.clean || aiMsg.content;
+          if (applyPromises(pp.promises)) toast('记下了一件待办');
+        }
       }
       if (!aiMsg.content) aiMsg.content = '（这次没有返回内容，再试一次？）';
-      if (allowed && slot) {
-        store.hints[slot.id] = ctx.ts;
+      if (allowed) {
+        if (timeHit && slot) store.hints[slot.id] = ctx.ts;
+        if (intentHit) {
+          var dk2 = dateKeyOf(new Date(ctx.ts));
+          if (store.intentDay !== dk2) { store.intentDay = dk2; store.intentCount = 0; }
+          store.intentCount = (store.intentCount || 0) + 1;
+        }
         store.lastHintTs = ctx.ts;
+      }
+      if (pending.length) {
+        pending.forEach(function (p) { p.done = true; });
       }
     }).catch(function (err) {
       if (err && err.name === 'AbortError') {
@@ -2695,6 +2817,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var total = rows.reduce(function (s, d) { return s + d.count; }, 0);
     ui.memStats.textContent = '筛选结果：' + rows.length + ' 天 / ' + total + ' 条　·　全部共 ' + days.length + ' 天';
 
+    if (ui.pendList) {
+      var ps = store.promises || [];
+      if (!ps.length) {
+        ui.pendList.innerHTML = '<p class="hint" style="margin:0">还没有待办。它答应过你的事会自动出现在这里。</p>';
+      } else {
+        ui.pendList.innerHTML = ps.map(function (p) {
+          return '<div class="wallet-day"><span>' + esc(p.text) + '</span>' +
+            '<button class="day-del" data-pdel="' + p.id + '">删除</button></div>';
+        }).join('');
+      }
+    }
+
     if (ui.memUsage) {
       var bb = store.balance;
       var rec0 = store.usage && store.usage[dateKeyOf(new Date())];
@@ -2772,6 +2906,9 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       return (m.role === 'user' ? '我：' : '小深：') + String(m.content).slice(0, 400);
     }).join('\n').slice(0, 8000);
 
+    var from = items[0] ? items[0].ts : 0;
+    var to = items[items.length - 1] ? items[items.length - 1].ts : 0;
+
     summarizing = true;
     toast('正在生成 ' + dayLabelShort(key) + ' 的摘要…');
 
@@ -2784,7 +2921,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ], { stream: false }).then(function (r) {
       var out = (r.content || '').trim().replace(/^摘要[：:]\s*/, '').slice(0, 240);
       if (!out) throw new Error('empty');
-      store.days[key] = { text: out, ts: Date.now(), src: 'auto' };
+      store.days[key] = { text: out, ts: Date.now(), from: from, to: to, src: 'auto' };
       saveNow();
       removeImagesOfDay(key);
       if (ui.memory.classList.contains('on')) renderMemory();
@@ -2927,6 +3064,15 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     ui.memBalanceBtn.addEventListener('click', function () { refreshBalance(false); });
 
+    ui.pendList.addEventListener('click', function (e) {
+      var pd = e.target.closest ? e.target.closest('[data-pdel]') : null;
+      if (!pd) return;
+      var pid = pd.getAttribute('data-pdel');
+      store.promises = (store.promises || []).filter(function (x) { return x.id !== pid; });
+      saveNow();
+      renderMemory();
+    });
+
     ui.btnWallet.addEventListener('click', function () {
       q('drawer').classList.remove('on');
       openWallet();
@@ -3012,7 +3158,14 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var ctx = nowContext();
     var slot = activeSlot(ctx.minutes);
     var allowed = slot && hintAllowed(slot, ctx.ts);
-    ui.promptPreview.textContent = buildSystemPrompt(ctx, allowed ? slot : null, store.settings, gapText(store.lastSeen, ctx.ts));
+    ui.promptPreview.textContent = buildSystemPrompt(
+      ctx,
+      allowed ? slot : null,
+      store.settings,
+      gapText(store.lastSeen, ctx.ts),
+      allowed ? 'time' : '',
+      pendingPromises()
+    );
   }
 
   function bindSettings() {
