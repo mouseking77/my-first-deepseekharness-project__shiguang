@@ -33,7 +33,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     imgTargetSize, composePayload, pickImagesToDrop,
     greetDecision, costOf, fmtNum, buildGreetPrompt,
     balanceSpent, updateBalanceState, money,
-    intentSignal, extractPromises, applyPromises, pendingPromises
+    intentSignal, extractPromises, applyPromises, pendingPromises,
+    detectActivity, recordActivity, activityBlock, habitBlock
   };
 })();
 `);
@@ -587,6 +588,25 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   );
   ok('意图模式给出不同建议', pIntent.indexOf('用户刚才提到累') >= 0);
   ok('提醒限定半句', pIntent.indexOf('半句话') >= 0);
+
+  console.log('\n[23] 活动识别与习惯');
+  eq('识别「我去健身」', G.detectActivity('我去健身了'), '健身');
+  eq('识别「先去吃饭」', G.detectActivity('先去吃饭'), '吃饭');
+  eq('识别「得去图书馆」', G.detectActivity('我得去图书馆'), '图书馆');
+  eq('闲聊不算活动', G.detectActivity('今天天气不错'), '');
+  eq('抱怨不误判', G.detectActivity('这个需求真烦'), '');
+
+  const S10 = G.store;
+  S10.activities = [];
+  ok('能记下活动', G.recordActivity('健身', Date.now()));
+  ok('活动块包含内容', G.activityBlock().indexOf('健身') >= 0);
+  S10.activities = [{ id: 'old', text: '吃饭', ts: Date.now() - 6 * 3600 * 1000 }];
+  eq('超过 4 小时就不再提', G.activityBlock(), '');
+
+  S10.habits = ['周三晚上固定去健身'];
+  ok('习惯块包含习惯', G.habitBlock().indexOf('周三晚上') >= 0);
+  S10.habits = [];
+  eq('没有习惯时为空', G.habitBlock(), '');
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
