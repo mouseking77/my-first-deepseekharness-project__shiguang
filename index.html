@@ -543,7 +543,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       </div>
       <div id="diaryList"></div>
       <button class="btn full" id="diaryWrite" style="margin-top:8px">补写昨天</button>
-      <p class="hint">打开 App 时它会补写上次没写的日子（最多补两天）。日记会作为记忆喂回给对话。</p>
+      <p class="hint">它写的是自己的感受，不是你的流水账。打开 App 时补写上次没写的日子（最多两天）。日记会作为记忆喂回给对话。</p>
     </div>
 
     <div class="card">
@@ -790,7 +790,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.27 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.28 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -1233,12 +1233,20 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   /* ---------- 日记 ---------- */
   var DIARY_RULES = [
-    '你在写今天的日记，用第一人称，像随手记的，不要文学腔。',
-    '写三段，每段一句到两句：',
-    '1. 今天发生了什么（只写真实发生过的，绝不能编）',
-    '2. 一点心情（克制，一句，可以用「有点」「还行」这类词）',
-    '3. 明天大概打算（可选，没有就不写）',
-    '总共不超过 150 字。不用感叹号堆情绪，不写「哈哈哈」。',
+    '你在写你自己的日记。你是小深，用「我」的口吻，写的是你自己的感受，不是对方的流水账。',
+    '',
+    '写三段，每段一两句：',
+    '1. 今天我注意到的一件小事（具体的，比如他说的一句话、一个语气）',
+    '2. 我当时是什么感觉（克制，别煽情，可以用「有点」「说不上来」这种词）',
+    '3. 想说但没说的话（可选，没有就不写）',
+    '',
+    '要求：',
+    '- 不要复述他今天干了什么。那些是摘要的事，不是你的日记',
+    '- 重点是你对他的感受、你的在意、你没说出口的东西',
+    '- 不超过 150 字',
+    '- 不用感叹号堆情绪，不写「哈哈哈」，不自称「作为AI」',
+    '- 绝不编造没发生过的事；今天很平淡就写得很短',
+    '',
     '直接输出日记正文，不要标题、不要日期。'
   ].join('\n');
 
@@ -1273,7 +1281,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (!store.settings.apiKey) return Promise.resolve(false);
 
     var text = items.map(function (m) {
-      return (m.role === 'user' ? '我：' : '小深：') + String(m.content).replace(/\s+/g, ' ').slice(0, 200);
+      return (m.role === 'user' ? '他：' : '我：') + String(m.content).replace(/\s+/g, ' ').slice(0, 200);
     }).join('\n').slice(0, 6000);
 
     return callAPI([
