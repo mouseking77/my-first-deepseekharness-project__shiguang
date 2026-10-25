@@ -802,7 +802,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.29 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.30 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -2291,6 +2291,21 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   /* ---------- 联网搜索 ---------- */
+  var SEARCH_TOOL = [{
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: '联网搜索。当你不知道答案、需要最新的信息、或需要核实事实时调用。不要为了显得勤奋而调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索关键词，1 到 60 字' }
+        },
+        required: ['query']
+      }
+    }
+  }];
+
   var SEARCH_WORDS = ['搜一下', '搜搜', '搜索', '查一下', '查查', '帮我查', '上网查', '最新消息', '今天天气', '比分', '股价', '新闻'];
 
   function shouldSearch(text) {
@@ -2440,6 +2455,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     var body = { model: s.model || 'deepseek-flash', messages: messages, stream: !!opts.stream };
     if (opts.stream) body.stream_options = { include_usage: true };
+    if (opts.tools && opts.tools.length) {
+      body.tools = opts.tools;
+      body.tool_choice = 'auto';
+    }
     if (s.thinking) {
       body.thinking = { type: 'enabled' };
       body.reasoning_effort = 'high';
@@ -2486,6 +2505,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     var reader = res.body.getReader();
     var dec = new TextDecoder('utf-8');
     var buf = '', content = '', reasoning = '', usage = null;
+    var toolCalls = [];
 
     function handleLine(line) {
       if (!line || line.charAt(0) === ':') return;
@@ -2497,6 +2517,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       if (j.error) throw apiError('http', { status: 200, detail: j.error.message || 'stream error' });
       if (j.usage) usage = j.usage;
       var d = (j.choices && j.choices[0] && j.choices[0].delta) || {};
+      if (d.tool_calls) {
+        d.tool_calls.forEach(function (tc) {
+          var i = (tc.index == null) ? 0 : tc.index;
+          var cur = toolCalls[i];
+          if (!cur) cur = toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+          if (tc.id) cur.id = tc.id;
+          if (tc.function) {
+            if (tc.function.name) cur.function.name += tc.function.name;
+            if (tc.function.arguments) cur.function.arguments += tc.function.arguments;
+          }
+        });
+      }
       if (d.reasoning_content) {
         reasoning += d.reasoning_content;
         if (onDelta) onDelta('reasoning', d.reasoning_content);
@@ -2511,7 +2543,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       return reader.read().then(function (r) {
         if (r.done) {
           if (buf) handleLine(buf.replace(/\r$/, ''));
-          return { content: content, reasoning: reasoning, usage: usage };
+          return { content: content, reasoning: reasoning, usage: usage, toolCalls: toolCalls.filter(Boolean) };
         }
         buf += dec.decode(r.value, { stream: true });
         var idx;
@@ -2876,6 +2908,61 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   }
 
   /* ============================ 发送 ============================ */
+  // 模型要求联网：执行搜索，把结果回传，再让它流式作答
+  function runToolRound(payload, res, aiMsg, signal) {
+    var calls = (res.toolCalls || []).filter(function (c) {
+      return c.function && c.function.name === 'web_search';
+    });
+    if (!calls.length) return Promise.resolve(res);
+
+    var assistantMsg = { role: 'assistant', content: res.content || '', tool_calls: res.toolCalls };
+    var toolMsgs = [];
+
+    return calls.reduce(function (p, call) {
+      return p.then(function () {
+        var q = '';
+        try { q = JSON.parse(call.function.arguments || '{}').query || ''; } catch (e) { q = ''; }
+        if (!q) {
+          toolMsgs.push({ role: 'tool', tool_call_id: call.id, content: '{"error":"没有查询词"}' });
+          return null;
+        }
+        toast('正在联网搜索…');
+        return doSearch(q).then(function (results) {
+          aiMsg.sources = results.slice(0, 5).map(function (r) {
+            return { title: r.site_name || r.title || r.url, url: r.url };
+          });
+          toolMsgs.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              results: results.map(function (r) {
+                return { title: r.title, url: r.url, summary: r.summary };
+              })
+            }).slice(0, 4000)
+          });
+          return null;
+        }).catch(function () {
+          toolMsgs.push({ role: 'tool', tool_call_id: call.id, content: '{"error":"搜索失败"}' });
+          return null;
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      aiMsg.content = '';
+      aiMsg.reasoning = '';
+      var payload2 = payload.concat([assistantMsg]).concat(toolMsgs);
+      return callAPI(payload2, {
+        stream: true,
+        signal: signal,
+        onDelta: function (kind, txt) {
+          if (!streamMsg) return;
+          if (kind === 'content') aiMsg.content += txt;
+          else aiMsg.reasoning += txt;
+          schedulePaint();
+        }
+      });
+    });
+  }
+
   function send() {
     var text = ui.input.value.trim();
     var img = pendingImg;
@@ -2963,6 +3050,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       ];
     }
     var payload = [{ role: 'system', content: system }].concat(history).concat([payloadUser]);
+    var useTools = !!store.settings.webSearch && searchQuotaLeft();
     var timedOut = false;
     var timer = setTimeout(function () {
       timedOut = true;
@@ -2972,12 +3060,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     callAPI(payload, {
       stream: true,
       signal: controller.signal,
+      tools: useTools ? SEARCH_TOOL : null,
       onDelta: function (kind, txt) {
         if (!streamMsg) return;
         if (kind === 'content') aiMsg.content += txt;
         else aiMsg.reasoning += txt;
         schedulePaint();
       }
+    }).then(function (res) {
+      if (res && res.toolCalls && res.toolCalls.length) {
+        return runToolRound(payload, res, aiMsg, controller.signal);
+      }
+      return res;
     }).then(function (res) {
       if (res && res.content) aiMsg.content = res.content;
       if (search && search.results && search.results.length) {

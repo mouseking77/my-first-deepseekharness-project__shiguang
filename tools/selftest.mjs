@@ -694,6 +694,19 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('删不存在的无效', G.applyRuleOps([{ op: 'drop', text: '不存在的规则' }]).length, 0);
   ok('改动有记录', S11.ruleLog.length >= 3);
 
+  console.log('\n[28] 工具调用（function calling）');
+  const tp1 = { choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'web_search', arguments: '{"query":"今' } }] } }] };
+  const tp2 = { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '天天气"}' } }] } }] };
+  const sseT = 'data: ' + JSON.stringify(tp1) + '\n\ndata: ' + JSON.stringify(tp2) + '\n\ndata: [DONE]\n\n';
+  const stT = new ReadableStream({
+    start(c) { c.enqueue(new TextEncoder().encode(sseT)); c.close(); }
+  });
+  const rt = await G.readStream(new Response(stT), null);
+  eq('捕获工具调用', rt.toolCalls.length, 1);
+  eq('工具名字', rt.toolCalls[0].function.name, 'web_search');
+  ok('参数跨块拼接完整', rt.toolCalls[0].function.arguments.indexOf('今天天气') >= 0);
+  ok('工具调用时正文为空', rt.content === '');
+
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
 }).catch((e) => { console.error(e); process.exit(1); });
