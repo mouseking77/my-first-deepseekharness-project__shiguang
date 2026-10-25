@@ -806,7 +806,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.31 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.32 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -1771,6 +1771,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       '- 不同意就直说「我不这么觉得」，别和稀泥。',
       '- 不知道就说不知道，可以说「我也说不好」「大概吧」。',
       '- 不必每句都以问句结尾。',
+      '- 例外：写代码、讲算法、排查报错时可以展开，不受上面长度限制；代码用 ``` 包起来并注明语言。',
       '',
       '【当前时间】' + ctx.full + '，' + ctx.weekday + '，' + ctx.period + '。',
       '【距上次聊天】' + gap,
@@ -2182,6 +2183,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
   function splitReply(text) {
     var t = String(text == null ? '' : text).trim();
     if (t.length < 50) return [t];
+    // 带代码块的不拆，避免把 ``` 切成两半
+    if (t.indexOf('```') >= 0) return [t];
     var mid = Math.floor(t.length / 2);
     var best = -1;
     for (var i = mid; i < t.length - 8; i++) {

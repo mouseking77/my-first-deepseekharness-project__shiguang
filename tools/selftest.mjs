@@ -715,6 +715,8 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   ok('两条都不为空', sp2[0].length > 0 && sp2[1].length > 0);
   ok('拆开不丢内容', (sp2[0] + sp2[1]).replace(/\s/g, '').length >= long1.replace(/\s/g, '').length - 1);
   eq('没标点的长文本不拆', G.splitReply('a'.repeat(120)).length, 1);
+  const codeReply = '这样改：\n```js\nfunction f(a) {\n  return a * 2;\n}\n```\n然后把调用处换成 f(x)，注意别漏了分号。改完记得刷新缓存。';
+  eq('带代码块不拆', G.splitReply(codeReply).length, 1);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
