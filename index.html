@@ -721,6 +721,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         <input type="checkbox" id="setThinkOpen">
       </div>
       <div class="switch-row">
+        <span>分条发送（像真人连发两条）</span>
+        <input type="checkbox" id="setSplit">
+      </div>
+      <div class="switch-row">
         <span>联网搜索（说「搜一下…」时触发）</span>
         <input type="checkbox" id="setSearch">
       </div>
@@ -802,7 +806,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.30 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.31 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -858,6 +862,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     autoSummary: true,
     diaryEnabled: true,
     webSearch: true,
+    splitReply: true,
     thinkOpen: false,
     termStart: '',
     useCourses: true,
@@ -1760,6 +1765,13 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       '- 不表演没有来由的情绪（不说「我今天心情很好」）。',
       '- 不每句话都关心，不用感叹号堆热情，不用表情包代替说话。',
       '',
+      '【说话方式】',
+      '- 像发消息，不像写文章：一次 1–2 句，最长不超过 4 句。',
+      '- 不分点、不列 1234、不用「首先/其次/总之/希望对你有帮助」。',
+      '- 不同意就直说「我不这么觉得」，别和稀泥。',
+      '- 不知道就说不知道，可以说「我也说不好」「大概吧」。',
+      '- 不必每句都以问句结尾。',
+      '',
       '【当前时间】' + ctx.full + '，' + ctx.weekday + '，' + ctx.period + '。',
       '【距上次聊天】' + gap,
       '',
@@ -2164,6 +2176,22 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
   function fmtNum(n) {
     return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  // 把一段回复从中间断开成两条（只在有自然断句时）
+  function splitReply(text) {
+    var t = String(text == null ? '' : text).trim();
+    if (t.length < 50) return [t];
+    var mid = Math.floor(t.length / 2);
+    var best = -1;
+    for (var i = mid; i < t.length - 8; i++) {
+      if ('。！？!?\n'.indexOf(t.charAt(i)) >= 0) { best = i + 1; break; }
+    }
+    if (best < 20 || best > t.length - 8) return [t];
+    var a = t.slice(0, best).trim();
+    var b = t.slice(best).trim();
+    if (!a || !b) return [t];
+    return [a, b];
   }
 
   /* ============================ 打开时先说话 ============================ */
@@ -2637,7 +2665,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'camera', 'camVideo', 'camClose', 'camSwitch', 'camShoot',
      'moodText', 'timeChip', 'scrim', 'drawer', 'settings', 'convList', 'toast',
      'setKey', 'setModel', 'setProxy', 'setThinking', 'setRemOn', 'setTone',
-     'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona', 'setThinkOpen', 'setSearch',
+     'setNight', 'setMorning', 'setNoon', 'setEvening', 'setPersona', 'setThinkOpen', 'setSearch', 'setSplit',
      'btnTest', 'testResult', 'promptPreview', 'btnClearAll', 'btnNewConv', 'btnInstall', 'swState',
      'memory', 'btnMemory', 'memBar', 'memText', 'memStats', 'memList',
      'memFrom', 'memTo', 'memSearch', 'memReset', 'memBefore', 'btnDelBefore', 'btnExport',
@@ -3133,6 +3161,22 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       busy = false;
       controller = null;
       conv.updatedAt = Date.now();
+
+      // 像真人一样把长回复拆成两条发
+      if (store.settings.splitReply && !aiMsg.error) {
+        var parts = splitReply(aiMsg.content);
+        if (parts.length > 1) {
+          aiMsg.content = parts[0];
+          var restText = parts.slice(1).join('\n');
+          setTimeout(function () {
+            conv.messages.push({ id: uid(), role: 'assistant', content: restText, ts: Date.now() });
+            conv.updatedAt = Date.now();
+            saveNow();
+            renderMessages(false);
+          }, 1100);
+        }
+      }
+
       saveNow();
       renderMessages(false);
       updateSendBtn();
@@ -3888,6 +3932,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     ui.setThinking.checked = !!s.thinking;
     ui.setThinkOpen.checked = !!s.thinkOpen;
     ui.setSearch.checked = !!s.webSearch;
+    ui.setSplit.checked = !!s.splitReply;
     ui.setRemOn.checked = !!s.reminders.enabled;
     ui.setTone.value = s.reminders.tone;
     ui.setNight.checked = !!s.reminders.night;
@@ -3941,6 +3986,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     });
     ui.setSearch.addEventListener('change', function (e) {
       store.settings.webSearch = e.target.checked;
+      save();
+    });
+    ui.setSplit.addEventListener('change', function (e) {
+      store.settings.splitReply = e.target.checked;
       save();
     });
     ui.setPersona.addEventListener('input', function (e) { store.settings.persona = e.target.value; save(); });

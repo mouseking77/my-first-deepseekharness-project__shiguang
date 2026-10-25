@@ -37,7 +37,7 @@ code = code.replace(/\}\)\(\);\s*$/, `
     detectActivity, recordActivity, activityBlock, habitBlock,
     diaryCandidates, diaryBlock, markActivityDone,
     shouldSearch, searchBlock, factBlock, extractTagged,
-    extractRules, applyRuleOps, ruleBlock
+    extractRules, applyRuleOps, ruleBlock, splitReply
   };
 })();
 `);
@@ -706,6 +706,15 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('工具名字', rt.toolCalls[0].function.name, 'web_search');
   ok('参数跨块拼接完整', rt.toolCalls[0].function.arguments.indexOf('今天天气') >= 0);
   ok('工具调用时正文为空', rt.content === '');
+
+  console.log('\n[29] 分条发送');
+  eq('短回复不拆', G.splitReply('嗯，那就这样。').length, 1);
+  const long1 = '今天下午一直在调部署，卡在缓存上，后来发现是 sw.js 没更新。改完之后终于通了，不过已经快十二点了。明天再收尾吧。';
+  const sp2 = G.splitReply(long1);
+  eq('长回复拆成两条', sp2.length, 2);
+  ok('两条都不为空', sp2[0].length > 0 && sp2[1].length > 0);
+  ok('拆开不丢内容', (sp2[0] + sp2[1]).replace(/\s/g, '').length >= long1.replace(/\s/g, '').length - 1);
+  eq('没标点的长文本不拆', G.splitReply('a'.repeat(120)).length, 1);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }
