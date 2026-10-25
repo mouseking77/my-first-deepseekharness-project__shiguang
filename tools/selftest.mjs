@@ -36,7 +36,8 @@ code = code.replace(/\}\)\(\);\s*$/, `
     intentSignal, extractPromises, applyPromises, pendingPromises,
     detectActivity, recordActivity, activityBlock, habitBlock,
     diaryCandidates, diaryBlock, markActivityDone,
-    shouldSearch, searchBlock, factBlock, extractTagged
+    shouldSearch, searchBlock, factBlock, extractTagged,
+    extractRules, applyRuleOps, ruleBlock
   };
 })();
 `);
@@ -667,6 +668,31 @@ G.readStream(new Response(stream), (kind, txt) => deltas.push(kind + ':' + txt))
   eq('抽出两条事实', tg.items.length, 2);
   ok('正文里没有标签残留', tg.clean.indexOf('<fact>') < 0);
   ok('正文保留', tg.clean.indexOf('正文') >= 0);
+
+  console.log('\n[27] 它自己改规矩');
+  const S11 = G.store;
+  S11.rules = [];
+  S11.ruleLog = [];
+  S11.ruleDay = '';
+  S11.ruleCount = 0;
+
+  const rx = G.extractRules('好 <rule op="add">回答前先说结论</rule> 完');
+  eq('解析出一条加规则', rx.ops.length, 1);
+  eq('规则动作识别', rx.ops[0].op, 'add');
+  ok('正文清掉标签', rx.clean.indexOf('<rule') < 0);
+
+  eq('第一次能加', G.applyRuleOps([{ op: 'add', text: '回答前先说结论' }]).length, 1);
+  eq('重复的不再加', G.applyRuleOps([{ op: 'add', text: '回答前先说结论' }]).length, 0);
+  eq('太短的拒绝', G.applyRuleOps([{ op: 'add', text: '短' }]).length, 0);
+  eq('同一天第二条能加', G.applyRuleOps([{ op: 'add', text: '别用感叹号' }]).length, 1);
+  eq('第三条被拦下', G.applyRuleOps([{ op: 'add', text: '别用省略号结尾' }]).length, 0);
+  ok('规矩块生效', G.ruleBlock().indexOf('回答前先说结论') >= 0);
+
+  S11.ruleDay = '';
+  S11.ruleCount = 0;
+  eq('能删掉已有规则', G.applyRuleOps([{ op: 'drop', text: '别用感叹号' }]).length, 1);
+  eq('删不存在的无效', G.applyRuleOps([{ op: 'drop', text: '不存在的规则' }]).length, 0);
+  ok('改动有记录', S11.ruleLog.length >= 3);
 
   console.log('\n' + (fail === 0 ? '全部通过：' + pass + ' 项' : '失败 ' + fail + ' / ' + (pass + fail)));
   if (fail) { console.log(bad.join('\n')); process.exit(1); }

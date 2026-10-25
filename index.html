@@ -670,6 +670,18 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       <div id="mbPromises"></div>
     </div>
 
+    <div class="card">
+      <h3>它给自己定的规矩</h3>
+      <div id="mbRules"></div>
+      <p class="hint">它会根据对话自己加减规矩（每天最多 2 条、总共 8 条）。底线改不了：不奉承、不编造、不冒充真人。</p>
+    </div>
+
+    <div class="card">
+      <h3>改动记录</h3>
+      <div id="mbRuleLog"></div>
+      <button class="btn full danger" id="mbRuleClear" style="margin-top:10px">清空所有规矩</button>
+    </div>
+
   </div>
 </div>
 
@@ -790,7 +802,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
 
     <section class="card">
       <h3>其它</h3>
-      <p class="hint" style="margin-top:0" id="verLine">版本 v1.28 · 2026-10-20</p>
+      <p class="hint" style="margin-top:0" id="verLine">版本 v1.29 · 2026-10-20</p>
       <button class="btn full" id="btnInstall" hidden>添加到主屏幕</button>
       <button class="btn full danger" id="btnClearAll" style="margin-top:8px">清除全部聊天记录</button>
       <p class="hint">文字记录只存在这台手机上，不上传。<b>图片会上传给 DeepSeek 用于识别</b>，本地只保留当天（最多 30 张），跨天或生成摘要后自动清理。</p>
@@ -827,6 +839,15 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     '当你说出「明天问你结果」「回头提醒你」这类承诺时，在回复末尾输出一次：',
     '<promise>问面试结果</promise>',
     '标签里写要跟进的那件事，一句话。只有你确实打算跟进时才输出，不要每句都说。'
+  ].join('\n');
+
+  var SELF_RULE_RULES = [
+    '【自我调整】',
+    '如果你发现自己的说话方式确实不合适（他嫌你啰嗦、你漏掉了什么、你答得太干），',
+    '可以给自己加一条规矩：<rule op="add">回答前先说结论，不超过三句</rule>',
+    '或删掉一条已经不合用的：<rule op="drop">回答前先说结论，不超过三句</rule>',
+    '规矩必须具体、可执行、不超过 40 字。一次最多一条，别为了改而改。',
+    '你不能改这条底线：不奉承、不编造、不冒充真人。'
   ].join('\n');
   var DEFAULT_SETTINGS = {
     apiKey: '',
@@ -918,6 +939,8 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     s.habits = Array.isArray(s.habits) ? s.habits : [];
     s.diaries = Array.isArray(s.diaries) ? s.diaries : [];
     s.facts = Array.isArray(s.facts) ? s.facts : [];
+    s.rules = Array.isArray(s.rules) ? s.rules : [];
+    s.ruleLog = Array.isArray(s.ruleLog) ? s.ruleLog : [];
     if (!s.firstSeen) s.firstSeen = Date.now();
     s.promiseDay = s.promiseDay || '';
     s.intentDay = s.intentDay || '';
@@ -977,6 +1000,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         habits: store.habits,
         diaries: store.diaries,
         facts: store.facts,
+        rules: store.rules,
+        ruleLog: store.ruleLog,
+        ruleDay: store.ruleDay,
+        ruleCount: store.ruleCount,
         firstSeen: store.firstSeen,
         promiseDay: store.promiseDay,
         promiseCount: store.promiseCount,
@@ -1382,6 +1409,60 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return { clean: clean.replace(/\n{3,}/g, '\n\n').trim(), items: items };
   }
 
+  /* ---------- 它自己定的规矩（全自动，但有约束和记录） ---------- */
+  var RULE_MAX = 8;
+  var RULE_PER_DAY = 2;
+  var RULE_HARD = '不奉承、不编造、不冒充真人、不承诺自己做不到的事';
+
+  function ruleBlock() {
+    var list = store.rules || [];
+    if (!list.length) return '';
+    return '【你自己给自己定的规矩】\n' + list.map(function (r, i) { return (i + 1) + '. ' + r.text; }).join('\n') +
+      '\n（这些是你过去根据对话给自己加的，遵守它们。如果发现不合适，可以改。）';
+  }
+
+  function applyRuleOps(ops) {
+    var logs = [];
+    var day = dateKeyOf(new Date());
+    if (store.ruleDay !== day) { store.ruleDay = day; store.ruleCount = 0; }
+    (ops || []).forEach(function (op) {
+      if (!op || !op.text) return;
+      if ((store.ruleCount || 0) >= RULE_PER_DAY) return;
+      var t = String(op.text).replace(/\s+/g, ' ').trim();
+      if (t.length < 4 || t.length > 40) return;
+
+      if (op.op === 'drop') {
+        var idx = -1;
+        (store.rules || []).forEach(function (r, i) { if (idx < 0 && r.text === t) idx = i; });
+        if (idx < 0) return;
+        store.rules.splice(idx, 1);
+        logs.push('删掉：' + t);
+      } else {
+        if ((store.rules || []).length >= RULE_MAX) return;
+        var dup = (store.rules || []).some(function (r) { return r.text === t; });
+        if (dup) return;
+        store.rules.push({ id: uid(), text: t, ts: Date.now() });
+        logs.push('加了一条：' + t);
+      }
+      store.ruleCount = (store.ruleCount || 0) + 1;
+      store.ruleLog.push({ ts: Date.now(), op: op.op || 'add', text: t });
+      if (store.ruleLog.length > 50) store.ruleLog = store.ruleLog.slice(-50);
+    });
+    if (logs.length) saveNow();
+    return logs;
+  }
+
+  function extractRules(text) {
+    var ops = [];
+    var re = /<rule\s+op="(add|drop)"\s*>([\s\S]*?)<\/rule>/gi;
+    var clean = String(text == null ? '' : text).replace(re, function (_, op, body) {
+      var t = String(body || '').replace(/\s+/g, ' ').trim();
+      if (t) ops.push({ op: op.toLowerCase(), text: t });
+      return '';
+    });
+    return { clean: clean.replace(/\n{3,}/g, '\n\n').trim(), ops: ops };
+  }
+
   /* ============================ 课表 ============================ */
   function normCourse(s) {
     return String(s)
@@ -1689,6 +1770,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
       '4. 不要生硬报时，不要说「根据当前时间」「我注意到现在是」这类元信息。也不要在同一段对话里反复用同一种关心句式。',
       '5. 用户正在讲重要、紧急或情绪低落的事时，先认真回应内容；关心可以省略，或只放在最后半句。',
       '6. 时间、日期、星期一律以上面的【当前时间】为准，不要自己推算，也不要编造。',
+      '7. 历史消息前面的 [HH:MM] 是时间。超过 2 小时前的事，除非用户先提起，不要主动翻出来说。',
       '',
       hint
     ];
@@ -1707,8 +1789,11 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (fb) lines.push('', fb);
     var pblock = promiseBlock(pending);
     if (pblock) lines.push('', pblock);
+    var rb = ruleBlock();
+    if (rb) lines.push('', rb);
     lines.push('', COURSE_OP_RULES);
     lines.push('', PROMISE_RULES);
+    lines.push('', SELF_RULE_RULES);
     lines.push('', '回复尽量简洁，除非用户要求展开。关心只用半句话，附在正文末尾，不单独成行，不超过 20 字。');
     return lines.join('\n');
   }
@@ -1842,7 +1927,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     return { dataUrl: cv.toDataURL('image/jpeg', IMG_QUALITY), w: size.w, h: size.h };
   }
 
-  // 拼装发给模型的历史：只让最近的图片带图，更早的降级成文字
+  // 拼装发给模型的历史：只让最近的图片带图，更早的降级成文字；每条带时间
   function composePayload(msgs, cache, maxImg) {
     var out = [];
     var used = 0;
@@ -1850,6 +1935,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     for (var i = msgs.length - 1; i >= 0; i--) {
       var m = msgs[i];
       var txt = m.content || '';
+      if (m.ts) txt = '[' + hhmm(m.ts) + '] ' + txt;
       var im = m.img;
       var canUse = im && im.id && !im.removed && cache[im.id] && used < maxImg;
       if (m.role === 'user' && canUse) {
@@ -2529,6 +2615,7 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
      'wallet', 'btnWallet', 'walletTotal', 'walletSpent', 'walletDays', 'walletRefresh', 'balanceChip',
      'msgMenu', 'pendList', 'diaryList', 'diaryWrite', 'setDiary',
      'memBook', 'btnMemoryBook', 'mbDays', 'mbStats', 'mbFacts', 'mbHabits', 'mbPromises', 'mbAdd', 'mbAddBtn',
+     'mbRules', 'mbRuleLog', 'mbRuleClear',
      'courses', 'btnCourses', 'csOn', 'csTerm', 'csBulk', 'csSample', 'csPreview',
      'csImport', 'csBulkHint', 'csDay', 'csStart', 'csEnd', 'csName', 'csRoom',
      'csFrom', 'csTo', 'csOdd', 'csAdd', 'csList', 'csClear', 'classBar', 'classBarText', 'csChat'
@@ -2609,6 +2696,19 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
     if (ui.mbPromises) {
       ui.mbPromises.innerHTML = memRows((store.promises || []).filter(function (p) { return !p.done; }), 'promise');
     }
+    if (ui.mbRules) {
+      ui.mbRules.innerHTML = memRows((store.rules || []).map(function (r, i) {
+        return { id: String(i), text: r.text };
+      }), 'rule');
+    }
+    if (ui.mbRuleLog) {
+      var logs = (store.ruleLog || []).slice(-10).reverse();
+      ui.mbRuleLog.innerHTML = logs.length ? logs.map(function (l) {
+        var d = new Date(l.ts);
+        return '<div class="wallet-day"><span>' + (l.op === 'drop' ? '删：' : '加：') + esc(l.text) + '</span>' +
+          '<span>' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hhmm(l.ts) + '</span></div>';
+      }).join('') : '<p class="hint" style="margin:0">还没改过。</p>';
+    }
   }
 
   function openMemBook() {
@@ -2642,6 +2742,10 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
             return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' +
               (i + 1) + '. ' + esc(s.title || s.url) + '</a>';
           }).join('') + '</div>';
+      }
+      if (m.ruleLog && m.ruleLog.length) {
+        out += '<div class="oplog"><b>✏️ 它改了自己的规矩</b><br>' +
+          m.ruleLog.map(function (x) { return esc(x); }).join('<br>') + '</div>';
       }
       if (m.why) out += '<div class="why">· ' + esc(m.why) + '</div>';
       if (m.opLog && m.opLog.length) {
@@ -2892,6 +2996,15 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         if (pp.promises.length) {
           aiMsg.content = pp.clean || aiMsg.content;
           if (applyPromises(pp.promises)) toast('记下了一件待办');
+        }
+        var rr = extractRules(aiMsg.content);
+        if (rr.ops.length) {
+          aiMsg.content = rr.clean || aiMsg.content;
+          var rlogs = applyRuleOps(rr.ops);
+          if (rlogs.length) {
+            aiMsg.ruleLog = rlogs;
+            toast('它给自己改了一条规矩');
+          }
         }
       }
       if (!aiMsg.content) aiMsg.content = '（这次没有返回内容，再试一次？）';
@@ -3613,9 +3726,20 @@ details>summary{cursor:pointer;font-size:13px;color:#8b95a8}
         store.habits.splice(Number(id), 1);
       } else if (kind === 'promise') {
         store.promises = (store.promises || []).filter(function (x) { return x.id !== id; });
+      } else if (kind === 'rule') {
+        store.rules.splice(Number(id), 1);
       }
       saveNow();
       renderMemBook();
+    });
+
+    ui.mbRuleClear.addEventListener('click', function () {
+      if (!(store.rules || []).length) { toast('本来就没有规矩'); return; }
+      if (!confirm('清空它给自己定的所有规矩？')) return;
+      store.rules = [];
+      saveNow();
+      renderMemBook();
+      toast('已清空');
     });
 
     ui.memAuto.addEventListener('change', function (e) {
